@@ -91,11 +91,11 @@ En Élevé, R+1 passe de 2 335 à 398 draw calls (÷ 5,9).
 
 | Cible par étage | Avant | Après lot 2 | Statut |
 |---|---|---|---|
-| < 300 draw calls | 965 – 1 177 (Moyen) | 348 – 398 | pas encore : les personnages en représentent ~60 % → lot 3 |
+| < 300 draw calls | 965 – 1 177 (Moyen) | 348 – 398 | pas encore : les personnages en sont la plus grosse part → lot 3 |
 | < 300 000 triangles rendus | 549 745 – 704 290 | 162 613 – 216 645 | ✔ |
 | < 60 matériaux | 253 – 293 | 114 – 135 | pas encore : personnages actuels → lot 3 |
 | Fuite de textures | 134 → 299 | stable (79) | ✔ corrigée |
 
-Les personnages actuels sont assemblés à partir de dizaines de pièces (≈ 25 objets chacun
-après fusion). Les remplacer au lot 3 par des personnages glTF de 1 à 3 objets ramène
+Les personnages actuels restent assemblés à partir de nombreuses pièces (un objet par membre,
+plus cheveux, yeux, accessoires). Les remplacer au lot 3 par des personnages glTF de 1 à 3 objets ramène
 mécaniquement l'étage sous les 300 draw calls.
