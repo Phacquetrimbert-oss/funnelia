@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+  <title>Conversio – Du prospect au client</title>
+  <meta name="description" content="Conversio : simulateur 3D de conversion commerciale B2B, en français et en anglais. Faire passer chaque contact de prospect à lead, opportunité puis client fidèle, avec tableaux de bord KPI de l'équipe.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <!-- Les textes portent leur version anglaise dans data-en (contenu), data-en-title,
+       data-en-placeholder et data-en-aria-label ; elle est appliquée au chargement. -->
+
+  <!-- Scène 3D, étiquettes, plan -->
+  <div id="scene"></div>
+  <div id="etiquettes"></div>
+  <canvas id="minimap" class="minimap cache" width="440" height="300" aria-label="Plan de l'étage Veltis" data-en-aria-label="Veltis floor plan"></canvas>
+  <div id="etage-chip" class="etage-chip cache" aria-live="polite">
+    <span class="ec-pile" aria-hidden="true"><i data-n="2"></i><i data-n="1"></i><i data-n="0"></i></span>
+    <span class="ec-code">R+1</span><span class="ec-nom"></span>
+    <button id="btn-plan" class="ec-plan" title="Plan de l'immeuble (P)" data-en-title="Building map (P)" tabindex="-1" data-en="Map">Plan</button>
+  </div>
+  <div id="lieu" class="lieu cache" aria-live="polite"></div>
+  <div id="fil" class="fil" aria-live="polite" aria-label="Fil de l'entreprise" data-en-aria-label="Company feed"></div>
+  <div id="anim-conversion" class="anim-conversion cache" aria-live="polite"></div>
+  <div id="anim-etape" class="anim-etape cache" aria-live="polite"></div>
+  <div id="ascenseur" class="ascenseur cache" role="dialog" aria-label="Ascenseur" data-en-aria-label="Lift">
+    <div class="asc-panneau">
+      <div class="asc-ecran"><span id="asc-fleche" class="asc-fleche"></span><span id="asc-niveau" class="asc-niveau">R+1</span></div>
+      <div id="asc-titre" class="asc-titre">Choisissez un étage</div>
+      <div id="asc-boutons" class="asc-boutons"></div>
+      <div class="asc-aide" data-en="↑ ↓ choose · Enter go · G 1 2 direct access · Esc step out">↑ ↓ choisir · Entrée partir · 0 1 2 accès direct · Échap sortir</div>
+    </div>
+  </div>
+
+  <!-- HUD -->
+  <div id="hud" class="hud cache">
+    <div class="hud-bloc">
+      <div class="hud-entete">
+        <span id="hud-pastille" class="hud-pastille"></span>
+        <span id="hud-niveau" class="hud-niveau"></span>
+        <span id="hud-tags" class="hud-tags"></span>
+      </div>
+      <div id="hud-mission" class="hud-mission"></div>
+      <div id="hud-tunnel" class="tunnel-ligne cache"></div>
+      <div id="hud-jauge" class="jauge cache">
+        <div class="jauge-ligne"><span id="hud-jauge-label"></span><span id="hud-jauge-valeur"></span></div>
+        <div class="jauge-fond"><div id="hud-jauge-rempli" class="jauge-rempli"></div></div>
+      </div>
+      <div id="hud-posture" class="posture-mini"></div>
+      <div id="hud-taches" class="hud-taches cache"></div>
+      <div class="hud-erreurs"><span data-en="Errors">Erreurs</span><span id="hud-erreurs" class="pips"></span></div>
+    </div>
+    <div class="hud-droite">
+      <div class="hud-outils">
+        <span id="hud-horloge" class="pastille pastille-horloge"></span>
+        <button id="btn-accelerer" class="btn-icone" title="Accélérer le temps (F)" data-en-title="Speed up time (F)" tabindex="-1">»</button>
+        <button id="btn-kpi" class="btn-icone btn-texte" title="Tableau de bord commercial (K)" data-en-title="Sales dashboard (K)" tabindex="-1">KPI</button>
+        <button id="btn-equipe" class="btn-icone btn-texte" title="Équipe et relations (O)" data-en-title="Team and relationships (O)" data-en="Team" tabindex="-1">Équipe</button>
+        <button id="btn-guide" class="btn-icone btn-texte" title="Guide du commercial (G)" data-en-title="Sales guide (G)" tabindex="-1">Guide</button>
+        <button id="btn-aide" class="btn-icone" title="Aide et commandes (H)" data-en-title="Help and controls (H)" tabindex="-1">?</button>
+        <button id="btn-son" class="btn-icone btn-texte" title="Son (M)" data-en-title="Sound (M)" data-en="Sound" tabindex="-1">Son</button>
+        <button id="btn-pause" class="btn-icone" title="Pause (Échap)" data-en-title="Pause (Esc)" tabindex="-1">❚❚</button>
+      </div>
+      <div id="hud-kpis" class="kpis-live"></div>
+    </div>
+  </div>
+
+  <!-- Panneau CRM de mission -->
+  <aside id="panneau-mission" class="panneau-mission cache">
+    <header class="pm-entete">
+      <div>
+        <div id="pm-titre" class="pm-titre"></div>
+        <div id="pm-sous-titre" class="pm-sous-titre"></div>
+      </div>
+      <button id="btn-panneau" class="btn-icone btn-mini" title="Réduire ou afficher" data-en-title="Collapse or expand" tabindex="-1">–</button>
+    </header>
+    <div id="pm-contenu" class="pm-contenu"></div>
+  </aside>
+
+  <div id="indice" class="indice cache"></div>
+  <div id="viseur" class="viseur cache" aria-hidden="true"></div>
+  <div id="invite" class="invite cache" aria-live="polite"></div>
+  <div id="boussole" class="boussole cache" aria-hidden="true">
+    <div id="boussole-bande" class="boussole-bande"></div>
+    <div id="boussole-reperes" class="boussole-reperes"></div>
+    <span class="boussole-index"></span>
+  </div>
+  <div id="fps" class="fps cache"></div>
+  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <div id="coach" class="coach cache" role="status"></div>
+
+  <!-- Entretien -->
+  <div id="dialogue" class="dialogue cache" role="dialog" aria-live="polite">
+    <div class="ent-entete">
+      <div id="ent-avatar" class="ent-avatar"></div>
+      <div class="ent-ident">
+        <div id="ent-nom" class="ent-nom"></div>
+        <div id="ent-role" class="ent-role"></div>
+      </div>
+      <span id="ent-canal" class="ent-canal"></span>
+    </div>
+    <div id="ent-indicateurs" class="ent-indicateurs">
+      <div id="ent-confiance" class="ent-confiance">
+        <span data-en="Trust">Confiance</span>
+        <div class="ent-barre"><div id="ent-confiance-rempli"></div></div>
+        <span id="ent-confiance-valeur" class="ent-valeur"></span>
+      </div>
+      <div id="ent-signal" class="ent-signal"></div>
+    </div>
+    <p id="dialogue-texte" class="dialogue-texte"></p>
+    <div id="dialogue-boutons" class="dialogue-boutons"></div>
+    <div id="dialogue-aide" class="dialogue-aide"></div>
+  </div>
+
+  <!-- Fenêtre : configurateurs, guide, réglages, aide, badges -->
+  <div id="fenetre" class="fenetre cache" role="dialog" aria-modal="true">
+    <div id="fenetre-boite" class="fenetre-boite">
+      <header class="fenetre-entete">
+        <div>
+          <div id="fenetre-titre" class="fenetre-titre"></div>
+          <div id="fenetre-sous-titre" class="fenetre-sous-titre"></div>
+        </div>
+        <button id="fenetre-fermer" class="btn-icone btn-mini" title="Fermer (Échap)" data-en-title="Close (Esc)" tabindex="-1">✕</button>
+      </header>
+      <div id="fenetre-corps" class="fenetre-corps"></div>
+      <footer id="fenetre-pied" class="fenetre-pied"></footer>
+    </div>
+  </div>
+
+  <!-- Commandes tactiles -->
+  <div id="manette" class="manette cache">
+    <div class="croix">
+      <button data-dir="haut" class="fleche f-haut" aria-label="Haut" data-en-aria-label="Up">▲</button>
+      <button data-dir="gauche" class="fleche f-gauche" aria-label="Gauche" data-en-aria-label="Left">◀</button>
+      <button data-dir="droite" class="fleche f-droite" aria-label="Droite" data-en-aria-label="Right">▶</button>
+      <button data-dir="bas" class="fleche f-bas" aria-label="Bas" data-en-aria-label="Down">▼</button>
+    </div>
+    <button id="btn-action" class="btn-action" data-en="Act">Agir</button>
+  </div>
+
+  <!-- Chargement -->
+  <div id="ecran-chargement" class="ecran-chargement">
+    <div class="chargement-contenu">
+      <div class="marque marque-grande">
+        <span class="marque-logo" aria-hidden="true"><span>P</span><span>C</span></span>
+        <div>
+          <p class="marque-nom">Conversio</p>
+          <p class="marque-devise" data-en="Sales conversion simulator">Simulateur de conversion commerciale</p>
+        </div>
+      </div>
+      <div class="chargement-piste"><div id="chargement-barre" class="chargement-barre"></div></div>
+      <p id="chargement-texte" class="chargement-texte" data-en="Loading…">Chargement…</p>
+    </div>
+  </div>
+
+  <!-- Démarrage : marque et choix de la langue -->
+  <div id="ecran-demarrage" class="ecran ecran-demarrage cache">
+    <div class="carte-ecran carte-demarrage">
+      <div class="marque marque-grande">
+        <span class="marque-logo" aria-hidden="true"><span>P</span><span>C</span></span>
+        <div>
+          <p class="marque-nom">Conversio</p>
+          <p class="marque-devise" data-en="Sales conversion simulator">Simulateur de conversion commerciale</p>
+        </div>
+      </div>
+      <p class="demarrage-accroche" data-en="From prospect to customer: master the conversion funnel and turn one-shot selling into lasting customer value.">De prospect à client : maîtrisez le tunnel de conversion et passez de la vente one-shot à la valeur client durable.</p>
+      <div class="demarrage-langue">
+        <p class="demarrage-label">Langue du jeu · Game language</p>
+        <div class="choix-langue" role="radiogroup" aria-label="Langue · Language">
+          <button type="button" class="langue-option" data-langue="fr"><span class="langue-code">FR</span><span class="langue-nom">Français</span></button>
+          <button type="button" class="langue-option" data-langue="en"><span class="langue-code">EN</span><span class="langue-nom">English</span></button>
+        </div>
+      </div>
+      <button id="btn-commencer" class="btn-principal btn-grand" data-en="Start">Commencer</button>
+      <p class="demarrage-pied" data-en="First-person 3D simulation · keyboard and mouse or touch · fictional companies and people">Simulation 3D à la première personne · clavier et souris ou tactile · entreprises et personnes fictives</p>
+    </div>
+  </div>
+
+  <!-- Accueil -->
+  <div id="ecran-accueil" class="ecran cache">
+    <div class="carte-ecran carte-large accueil">
+      <header class="barre-marque">
+        <div class="marque">
+          <span class="marque-logo" aria-hidden="true"><span>P</span><span>C</span></span>
+          <div>
+            <p class="marque-nom">Conversio</p>
+            <p class="marque-devise" data-en="Sales conversion simulator">Simulateur de conversion commerciale</p>
+          </div>
+        </div>
+        <nav class="barre-actions">
+          <div class="segment segment-langue" role="radiogroup" aria-label="Langue · Language">
+            <button type="button" class="segment-option" data-langue="fr">FR</button>
+            <button type="button" class="segment-option" data-langue="en">EN</button>
+          </div>
+          <button id="btn-aide-accueil" class="btn-secondaire btn-petit" data-en="Help">Aide</button>
+          <button id="btn-reglages-accueil" class="btn-secondaire btn-petit" data-en="Settings">Paramètres</button>
+          <button id="btn-kpi-accueil" class="btn-secondaire btn-petit" data-en="Sales dashboard">Tableau de bord</button>
+          <button id="btn-guide-accueil" class="btn-secondaire btn-petit" data-en="Sales guide">Guide du commercial</button>
+        </nav>
+      </header>
+
+      <section class="hero">
+        <div class="hero-texte">
+          <h1 data-en="From prospect to customer">De prospect à client</h1>
+          <p class="intro" data-en="You are a sales rep at &lt;strong&gt;Veltis&lt;/strong&gt;, publisher of the SaaS sales management software &lt;strong&gt;Veltis One&lt;/strong&gt;, in its &lt;strong&gt;three-level building on the Esplanade de La Défense&lt;/strong&gt;. Everything happens at the office: lobby and showroom on the ground floor, sales floor on level 1, Academy and leadership on level 2, linked by lifts. Around fifteen colleagues work, have coffee, meet and make calls there: &lt;strong&gt;talk to them&lt;/strong&gt; (E key) to build your internal network. Your job: &lt;strong&gt;move every prospect through the conversion funnel&lt;/strong&gt;, from the stranger met at the Forum breakfast to the signed customer.">Vous êtes commercial chez <strong>Veltis</strong>, éditeur du logiciel SaaS <strong>Veltis One</strong>, dans son <strong>immeuble de trois niveaux sur l'esplanade de La Défense</strong>. Tout se joue dans les bureaux : hall et showroom au RDC, plateau commercial au R+1, Academy et direction au R+2, reliés par les ascenseurs. Une quinzaine de collègues y travaillent, prennent un café, se réunissent, téléphonent : <strong>échangez avec eux</strong> (touche E) pour construire votre réseau interne. Votre métier : <strong>faire avancer chaque prospect dans le tunnel de conversion</strong>, de l'inconnu rencontré à la matinale du Forum jusqu'au client signé.</p>
+          <p class="intro intro-requin" data-en="&lt;strong&gt;Your common thread: the conversion funnel.&lt;/strong&gt; Each mission moves your contacts one stage further: &lt;strong&gt;Prospect → Lead → Opportunity → Customer&lt;/strong&gt;. Your funnel gauge moves forward when your decisions make contacts convert and back when they block conversion; every stage change is highlighted by an animation. The &lt;strong&gt;dashboard&lt;/strong&gt; compares your revenue, forecast, margin and profitability with the other sales reps.">
+            <strong>Votre fil rouge : le tunnel de conversion.</strong> Chaque mission fait avancer vos contacts d'une étape : <strong>Prospect → Lead → Opportunité → Client</strong>. Votre jauge progresse quand vos décisions font convertir et recule quand elles freinent la conversion ; chaque passage d'étape est mis en scène par une animation. Le <strong>tableau de bord</strong> compare votre CA, votre prévisionnel, votre marge et votre rentabilité à ceux des autres commerciaux.</p>
+        </div>
+        <aside id="hero-action" class="hero-action" aria-live="polite"></aside>
+      </section>
+
+      <section class="profil-carte">
+        <div class="profil-entete">
+          <h2 data-en="Your participant profile">Votre profil de participant</h2>
+          <p class="profil-aide" data-en="These settings apply to every mission.">Ces réglages s'appliquent à toutes les missions.</p>
+        </div>
+        <div class="reglages">
+          <label class="champ">
+            <span data-en="Participant">Participant</span>
+            <input id="nom-participant" type="text" maxlength="40" placeholder="Prénom Nom" data-en-placeholder="First Last" autocomplete="name">
+          </label>
+          <label class="champ champ-obligatoire">
+            <span data-en="Customers in portfolio &lt;abbr title=&quot;required&quot;&gt;*&lt;/abbr&gt;">Clients en portefeuille <abbr title="obligatoire">*</abbr></span>
+            <input id="portefeuille" type="text" inputmode="numeric" maxlength="4" placeholder="obligatoire" data-en-placeholder="required" autocomplete="off" spellcheck="false" required aria-required="true">
+          </label>
+          <div class="champ">
+            <span data-en="Profile">Profil</span>
+            <div class="segment" role="radiogroup" aria-label="Profil commercial" data-en-aria-label="Sales profile">
+              <button type="button" data-profil="terrain" class="segment-option" data-en="Field">Terrain</button>
+              <button type="button" data-profil="sedentaire" class="segment-option" data-en="Inside sales">Sédentaire</button>
+            </div>
+          </div>
+          <div class="champ">
+            <span data-en="Difficulty">Exigence</span>
+            <div class="segment" role="radiogroup" aria-label="Niveau d'exigence" data-en-aria-label="Difficulty level">
+              <button type="button" data-exigence="standard" class="segment-option">Standard</button>
+              <button type="button" data-exigence="confirme" class="segment-option" data-en="Advanced">Confirmé</button>
+            </div>
+          </div>
+          <label class="champ champ-case">
+            <input id="case-son" type="checkbox">
+            <span data-en="Sound effects">Effets sonores</span>
+          </label>
+        </div>
+        <p id="profil-description" class="profil-description"></p>
+        <p id="portefeuille-description" class="profil-description portefeuille-description"></p>
+      </section>
+
+      <div class="titre-tunnel">
+        <h2 data-en="The conversion funnel">Le tunnel de conversion</h2>
+        <p data-en="Four missions, one per funnel stage, plus a retention bonus. Choose a stage to see its briefing.">Quatre missions, une par étage du tunnel, et un bonus de fidélisation. Choisissez une étape pour voir son briefing.</p>
+      </div>
+      <div id="grille-etapes" class="grille-etapes"></div>
+
+      <nav class="onglets-accueil" role="tablist" aria-label="Suivi" data-en-aria-label="Progress">
+        <button type="button" role="tab" data-onglet-accueil="progression" class="onglet-accueil" data-en="Progress">Progression</button>
+        <button type="button" role="tab" data-onglet-accueil="badges" class="onglet-accueil" data-en="Badges &amp; certificate">Badges et certificat</button>
+        <button type="button" role="tab" data-onglet-accueil="classement" class="onglet-accueil" data-en="Ranking">Classement</button>
+        <button type="button" role="tab" data-onglet-accueil="historique" class="onglet-accueil" data-en="History">Historique</button>
+      </nav>
+
+      <section class="panneau-accueil" data-panneau-accueil="progression" role="tabpanel">
+        <div class="trajectoire">
+          <div class="trajectoire-col">
+            <h3 data-en="Your progress in the funnel">Votre progression dans le tunnel</h3>
+            <div id="trajectoire-posture"></div>
+          </div>
+          <div class="trajectoire-col">
+            <h3 data-en="Your conversion funnel">Votre tunnel de conversion</h3>
+            <div id="trajectoire-tunnel"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panneau-accueil" data-panneau-accueil="badges" role="tabpanel">
+        <div id="badges-contenu"></div>
+      </section>
+
+      <section class="panneau-accueil historique classement" data-panneau-accueil="classement" role="tabpanel">
+        <div class="historique-entete">
+          <h3 id="classement-titre" data-en="Ranking">Classement</h3>
+        </div>
+        <div id="classement-contenu"></div>
+      </section>
+
+      <section class="panneau-accueil historique" data-panneau-accueil="historique" role="tabpanel">
+        <div class="historique-entete">
+          <h3 data-en="Latest sessions on this device">Dernières sessions sur ce poste</h3>
+          <div class="historique-actions">
+            <button id="btn-exporter" class="btn-secondaire btn-petit" data-en="Export (CSV)">Exporter (CSV)</button>
+            <button id="btn-reinitialiser" class="btn-lien" data-en="Clear">Effacer</button>
+          </div>
+        </div>
+        <div id="historique-contenu"></div>
+      </section>
+
+      <footer class="accueil-pied">
+        <div class="commandes">
+          <span data-en="&lt;kbd&gt;Mouse&lt;/kbd&gt; look · &lt;kbd&gt;W A S D&lt;/kbd&gt; / &lt;kbd&gt;Z Q S D&lt;/kbd&gt; move · &lt;kbd&gt;← →&lt;/kbd&gt; turn"><kbd>Souris</kbd> regarder · <kbd>Z Q S D</kbd> / <kbd>W A S D</kbd> se déplacer · <kbd>← →</kbd> tourner</span>
+          <span data-en="&lt;kbd&gt;E&lt;/kbd&gt; act / talk"><kbd>E</kbd> agir / échanger</span>
+          <span data-en="&lt;kbd&gt;Tab&lt;/kbd&gt; CRM"><kbd>Tab</kbd> CRM</span>
+          <span data-en="&lt;kbd&gt;O&lt;/kbd&gt; team"><kbd>O</kbd> équipe</span>
+          <span><kbd>G</kbd> guide</span>
+          <span data-en="&lt;kbd&gt;H&lt;/kbd&gt; help"><kbd>H</kbd> aide</span>
+          <span data-en="&lt;kbd&gt;Esc&lt;/kbd&gt; pause"><kbd>Échap</kbd> pause</span>
+        </div>
+        <p class="pied-credits" data-en="Conversio · fictional companies, people and prices · results stored on this device only">Conversio · entreprises, personnes et tarifs fictifs · résultats enregistrés uniquement sur ce poste</p>
+      </footer>
+    </div>
+  </div>
+
+  <!-- Briefing -->
+  <div id="ecran-briefing" class="ecran cache">
+    <div class="carte-ecran">
+      <div id="briefing-bandeau" class="bandeau"></div>
+      <p id="briefing-badge" class="badge"></p>
+      <h2 id="briefing-titre"></h2>
+      <p id="briefing-contexte" class="contexte"></p>
+      <div class="bloc">
+        <h3 data-en="Stage objective">Objectif de l'étape</h3>
+        <p id="briefing-business"></p>
+      </div>
+      <div class="bloc bloc-accent">
+        <h3 data-en="Your mission">Votre mission</h3>
+        <p id="briefing-mission" class="fort"></p>
+        <ul id="briefing-consignes" class="liste"></ul>
+      </div>
+      <div class="bloc bloc-posture">
+        <h3 data-en="This stage of the funnel">Cette étape du tunnel</h3>
+        <div id="briefing-posture"></div>
+      </div>
+      <div class="bloc">
+        <h3 id="briefing-profil-titre" data-en="Your profile">Votre profil</h3>
+        <p id="briefing-profil"></p>
+      </div>
+      <div class="bloc">
+        <h3 data-en="Assessment criteria">Critères d'évaluation</h3>
+        <ul id="briefing-criteres" class="liste"></ul>
+      </div>
+      <div class="boutons-ligne">
+        <button id="btn-briefing-guide" class="btn-secondaire" data-en="Sales guide">Guide du commercial</button>
+        <button id="btn-briefing-retour" class="btn-secondaire" data-en="Change stage">Changer d'étape</button>
+        <button id="btn-demarrer" class="btn-principal" data-en="Start the mission">Démarrer la mission</button>
+      </div>
+      <p class="aide-clavier" data-en="&lt;kbd&gt;↑&lt;/kbd&gt; &lt;kbd&gt;↓&lt;/kbd&gt; scroll · &lt;kbd&gt;←&lt;/kbd&gt; &lt;kbd&gt;→&lt;/kbd&gt; choose a button · &lt;kbd&gt;Enter&lt;/kbd&gt; start · &lt;kbd&gt;Esc&lt;/kbd&gt; change stage"><kbd>↑</kbd> <kbd>↓</kbd> faire défiler · <kbd>←</kbd> <kbd>→</kbd> choisir un bouton · <kbd>Entrée</kbd> démarrer · <kbd>Échap</kbd> changer d'étape</p>
+    </div>
+  </div>
+
+  <!-- Bilan -->
+  <div id="ecran-bilan" class="ecran cache">
+    <div class="carte-ecran">
+      <div id="bilan-bandeau" class="bandeau"></div>
+      <p id="bilan-participant" class="participant"></p>
+      <h2 id="bilan-titre"></h2>
+      <div class="synthese">
+        <div class="synthese-case"><span class="synthese-label" data-en="Assessment">Évaluation</span><span id="bilan-etoiles" class="etoiles"></span></div>
+        <div class="synthese-case"><span class="synthese-label">Score</span><span id="bilan-score" class="synthese-valeur"></span></div>
+        <div class="synthese-case"><span class="synthese-label" data-en="Errors">Erreurs</span><span id="bilan-erreurs" class="synthese-valeur"></span></div>
+        <div class="synthese-case"><span class="synthese-label" data-en="Time">Durée</span><span id="bilan-duree" class="synthese-valeur"></span></div>
+      </div>
+      <div id="bilan-conversion" class="bilan-conversion"></div>
+      <p id="bilan-texte" class="bilan-texte"></p>
+      <div id="bilan-badges" class="bilan-badges cache"></div>
+      <div class="forces-axes">
+        <div id="bilan-tunnel-bloc" class="bloc"><h3 data-en="Mission conversion funnel">Tunnel de conversion de la mission</h3><div id="bilan-tunnel"></div></div>
+        <div class="bloc bloc-posture"><h3 data-en="Your progress in the funnel">Votre progression dans le tunnel</h3><div id="bilan-posture"></div></div>
+      </div>
+      <div class="bloc bloc-classement">
+        <h3 data-en="Stage ranking">Classement de l'étape</h3>
+        <p id="bilan-rang" class="fort"></p>
+        <div id="bilan-classement"></div>
+        <p id="bilan-code" class="info-texte"></p>
+      </div>
+      <h3 class="titre-section" data-en="Performance indicators">Indicateurs de performance</h3>
+      <div id="bilan-kpis"></div>
+      <h3 class="titre-section" data-en="Skills used">Compétences mobilisées</h3>
+      <div id="bilan-competences" class="competences"></div>
+      <div class="forces-axes">
+        <div class="bloc"><h3 data-en="Strengths">Points forts</h3><ul id="bilan-forces" class="liste"></ul></div>
+        <div class="bloc"><h3 data-en="Areas for improvement">Axes de progrès</h3><ul id="bilan-axes" class="liste"></ul></div>
+      </div>
+      <div class="bloc bloc-accent">
+        <h3 id="bilan-retenir-titre"></h3>
+        <p id="bilan-retenir-texte"></p>
+      </div>
+      <details class="journal" open>
+        <summary data-en="Mission log">Journal de mission</summary>
+        <ol id="bilan-journal"></ol>
+      </details>
+      <div id="bilan-boutons" class="boutons-ligne sans-impression"></div>
+      <p class="aide-clavier sans-impression" data-en="&lt;kbd&gt;↑&lt;/kbd&gt; &lt;kbd&gt;↓&lt;/kbd&gt; scroll · &lt;kbd&gt;←&lt;/kbd&gt; &lt;kbd&gt;→&lt;/kbd&gt; choose a button · &lt;kbd&gt;Enter&lt;/kbd&gt; confirm"><kbd>↑</kbd> <kbd>↓</kbd> faire défiler · <kbd>←</kbd> <kbd>→</kbd> choisir un bouton · <kbd>Entrée</kbd> valider</p>
+    </div>
+  </div>
+
+  <!-- Pause -->
+  <div id="ecran-pause" class="ecran cache">
+    <div class="carte-ecran carte-petite">
+      <h2 data-en="Mission paused">Mission en pause</h2>
+      <p id="pause-resume" class="pause-resume"></p>
+      <div id="pause-stats" class="pause-stats"></div>
+      <div class="boutons-colonne">
+        <button id="btn-reprendre" class="btn-principal" data-en="Resume">Reprendre</button>
+        <button id="btn-pause-guide" class="btn-secondaire" data-en="Sales guide">Guide du commercial</button>
+        <button id="btn-pause-aide" class="btn-secondaire" data-en="Help and controls">Aide et commandes</button>
+        <button id="btn-pause-reglages" class="btn-secondaire" data-en="Settings">Paramètres</button>
+        <button id="btn-recommencer" class="btn-secondaire" data-en="Restart the mission">Recommencer la mission</button>
+        <button id="btn-pause-accueil" class="btn-secondaire" data-en="Change stage">Changer d'étape</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Moteur 3D puis simulateur -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <!-- Post-traitement (occlusion ambiante, halo, anticrénelage) : facultatif, le jeu fonctionne sans -->
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/CopyShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/LuminosityHighPassShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/FXAAShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/shaders/SSAOShader.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/math/SimplexNoise.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/EffectComposer.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/RenderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/ShaderPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/MaskPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/UnrealBloomPass.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/postprocessing/SSAOPass.js"></script>
+  <script src="script.js"></script>
+</body>
+</html>
