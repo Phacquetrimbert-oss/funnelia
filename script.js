@@ -1234,10 +1234,11 @@ function matCheveux(couleur) {
 
 /* Tête : sphère déformée en visage, couleurs de peau, lèvres et joues par sommet */
 const cacheTetes = {};
-function geometrieTete(femme, peau, rase = false) {
-  const cle = `${femme ? "f" : "h"}|${peau}|${rase ? 1 : 0}`;
+function geometrieTete(femme, peau, rase = false, basse = false) {
+  const cle = `${femme ? "f" : "h"}|${peau}|${rase ? 1 : 0}|${basse ? "b" : "h"}`;
   if (cacheTetes[cle]) return cacheTetes[cle];
-  const geo = new THREE.SphereGeometry(0.1, 56, 42);
+  // Version basse (personnages éloignés) : 10 fois moins de triangles, mêmes formes
+  const geo = basse ? new THREE.SphereGeometry(0.1, 20, 15) : new THREE.SphereGeometry(0.1, 56, 42);
   const p = geo.attributes.position;
   const teinte = new THREE.Color(peau);
   const levres = teinte.clone().lerp(new THREE.Color(femme ? 0xb5505a : 0xa86058), femme ? 0.55 : 0.4);
@@ -1300,10 +1301,11 @@ const STYLES_COIFFURE = {
   chignon: { front: 0.076, cote: 0.0, dos: -0.07, volume: 1.04, dessus: 0.012 }
 };
 const cacheCoiffures = {};
-function geometrieCoiffure(style) {
-  if (cacheCoiffures[style]) return cacheCoiffures[style];
+function geometrieCoiffure(style, basse = false) {
+  const cleCache = `${style}|${basse ? "b" : "h"}`;
+  if (cacheCoiffures[cleCache]) return cacheCoiffures[cleCache];
   const st = STYLES_COIFFURE[style];
-  const geo = new THREE.SphereGeometry(0.1, 48, 36);
+  const geo = basse ? new THREE.SphereGeometry(0.1, 20, 14) : new THREE.SphereGeometry(0.1, 48, 36);
   const p = geo.attributes.position;
   for (let i = 0; i < p.count; i++) {
     const nx = p.getX(i) / 0.1, ny = p.getY(i) / 0.1, nz = p.getZ(i) / 0.1;
@@ -1317,7 +1319,7 @@ function geometrieCoiffure(style) {
     p.setXYZ(i, nx * 0.086 * k, ny * 0.116 * k, nz * 0.098 * k);
   }
   geo.computeVertexNormals();
-  cacheCoiffures[style] = geo;
+  cacheCoiffures[cleCache] = geo;
   return geo;
 }
 let geoBarbe = null;
@@ -1589,15 +1591,40 @@ function creerPersonnage(o) {
   g.scale.setScalar(echelle);
   // Détails du visage affichés seulement de près (fluidité)
   const details = [meches, bouche, ...sourcils, ...yeux, ...paupieres];
-  g.userData = { corps, jambes, genoux, bras, coudes, mallette, tete, paupieres, bouche, femme, yeux, sourcils, details, levres: courbe, interieur, dents, sourire: 0.35, expression: "neutre", gestuelle: 0.7 + ((variante * 11) % 7) * 0.1, clignement: Math.random() * 4, respiration: Math.random() * 6,
+  const styleBase = style === "queue" ? "chignon" : style;
+  const lod = { visage, coiffure, tete: [visage.geometry, geometrieTete(femme, peau, rase, true)], cheveux: [coiffure.geometry, geometrieCoiffure(styleBase, true)] };
+  g.userData = { corps, jambes, genoux, bras, coudes, mallette, tete, paupieres, bouche, femme, yeux, sourcils, details, lod, levres: courbe, interieur, dents, sourire: 0.35, expression: "neutre", gestuelle: 0.7 + ((variante * 11) % 7) * 0.1, clignement: Math.random() * 4, respiration: Math.random() * 6,
     attitude: "ballants", attitudeFin: 3 + Math.random() * 10, saccade: Math.random() * 2, regardYeux: { x: 0, y: 0 }, regardBas: 0, demarche: 0.9 + Math.random() * 0.2 };
   return g;
 }
 
 /* Vie du visage et du corps : respiration, clignements, regard, parole */
+const frustumCamera = new THREE.Frustum();
+const matriceFrustum = new THREE.Matrix4();
+const sphereTemp = new THREE.Sphere();
+function majFrustumCamera() {
+  frustumCamera.setFromProjectionMatrix(matriceFrustum.multiplyMatrices(camera.projectionMatrix, camera.matrixWorldInverse));
+}
+const DISTANCE_DETAILS = 12;
+// Niveau de détail : au-delà de 12 m, tête et cheveux simplifiés, traits fins masqués. Renvoie « proche ».
+function majNiveauDetail(perso) {
+  const u = perso.userData;
+  perso.getWorldPosition(vecteurTemp);
+  const proche = camera.position.distanceToSquared(vecteurTemp) < DISTANCE_DETAILS * DISTANCE_DETAILS;
+  if (u.lod && u.lodProche !== proche) {
+    u.lodProche = proche;
+    u.lod.visage.geometry = u.lod.tete[proche ? 0 : 1];
+    u.lod.coiffure.geometry = u.lod.cheveux[proche ? 0 : 1];
+    u.details.forEach(d => { d.visible = proche; });
+  }
+  return proche;
+}
 function animerVivant(perso, dt, { parle = false, regarder = true } = {}) {
   const u = perso.userData;
   if (!u.tete) return;
+  const proche = majNiveauDetail(perso);
+  // Visage animé seulement de près et dans le champ de la caméra
+  if (!proche || !frustumCamera.intersectsSphere(sphereTemp.set(vecteurTemp, 1.2))) return;
   u.respiration += dt;
   u.corps.scale.set(1, 1 + Math.sin(u.respiration * 1.6) * 0.006, 1);
   // Clignement des yeux toutes les 2 à 6 secondes
@@ -1606,9 +1633,6 @@ function animerVivant(perso, dt, { parle = false, regarder = true } = {}) {
   if (u.clignement <= 0) u.clignement = 2 + Math.random() * 4;
   u.paupieres.forEach(p => { p.rotation.x = ferme ? 1.2 : -0.05; });
   // Lèvres qui bougent pendant la parole
-  // Niveau de détail : les traits fins ne sont dessinés qu'à proximité de la caméra
-  const proche = camera.position.distanceToSquared(perso.getWorldPosition(vecteurTemp)) < 100;
-  if (u.details && u.detailsVisibles !== proche) { u.detailsVisibles = proche; u.details.forEach(d => { d.visible = proche; }); }
   // Parole : ouverture de la bouche, dents visibles ; expression : sourire, concentration
   const ouverture = parle ? Math.abs(Math.sin(u.respiration * 11)) * (0.6 + 0.4 * Math.abs(Math.sin(u.respiration * 3.7))) : 0;
   if (u.interieur) {
@@ -7536,6 +7560,7 @@ function boucle() {
   jeu.temps += dt;
   debugDebutImage();
   if (bancTest.actif) { executerBanc(); debugFinImage(); return; }
+  majFrustumCamera();
 
   if (jeu.mode === "jeu" && jeu.def) {
     jeu.dureeReelle += dt;
@@ -9610,6 +9635,7 @@ function majPassants(dt) {
     p.mesh.position.set(p.a[0] + dx * p.k, 0, p.a[1] + dz * p.k);
     p.mesh.rotation.y = Math.atan2(dx * p.sens, dz * p.sens);
     animerMarche(p.mesh, p.t, true);
+    majNiveauDetail(p.mesh);
   });
 }
 
