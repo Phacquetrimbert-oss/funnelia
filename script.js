@@ -369,9 +369,18 @@ function maillage(geo, couleur, ombre = true) {
   m.receiveShadow = true;
   return m;
 }
-const boite = (w, h, d, c, ombre = true) => maillage(new THREE.BoxGeometry(w, h, d), c, ombre);
-const cylindre = (rh, rb, h, c, s = 12) => maillage(new THREE.CylinderGeometry(rh, rb, h, s), c);
-const sphere = (r, c, s = 16) => maillage(new THREE.SphereGeometry(r, s, Math.round(s * 0.75)), c);
+// Géométries partagées : une seule géométrie par jeu de paramètres, réutilisée par tous les objets identiques
+const cacheGeometries = new Map();
+function geometriePartagee(cle, fabrique) {
+  if (!cacheGeometries.has(cle)) cacheGeometries.set(cle, fabrique());
+  return cacheGeometries.get(cle);
+}
+const geoBoite = (w, h, d) => geometriePartagee(`b|${w}|${h}|${d}`, () => new THREE.BoxGeometry(w, h, d));
+const geoCylindre = (rh, rb, h, s) => geometriePartagee(`c|${rh}|${rb}|${h}|${s}`, () => new THREE.CylinderGeometry(rh, rb, h, s));
+const geoSphere = (r, s) => geometriePartagee(`s|${r}|${s}`, () => new THREE.SphereGeometry(r, s, Math.round(s * 0.75)));
+const boite = (w, h, d, c, ombre = true) => maillage(geoBoite(w, h, d), c, ombre);
+const cylindre = (rh, rb, h, c, s = 12) => maillage(geoCylindre(rh, rb, h, s), c);
+const sphere = (r, c, s = 16) => maillage(geoSphere(r, s), c);
 function pos(obj, x, y, z) { obj.position.set(x, y, z); return obj; }
 function plan(w, d, couleur, y = 0.02) {
   const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), mat(couleur));
@@ -495,6 +504,40 @@ function fusionnerGeometries(geos) {
   sortie.setIndex(new THREE.BufferAttribute(indices, 1));
   sortie.computeBoundingSphere();
   return sortie;
+}
+/* Personnages : toutes les pièces unies d'un même membre sont fusionnées en UN mesh,
+   avec un matériau unique partagé par tous les personnages ; la couleur de chaque
+   pièce est conservée dans la géométrie (couleurs par sommet). */
+const materiauPersonnage = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.72, metalness: 0.03 });
+function fusionnerPersonnage(groupe) {
+  const pieces = [];
+  groupe.children.forEach(o => {
+    if (!o.isMesh || o.userData.dynamique) return;
+    const m = o.material;
+    if (Array.isArray(m) || !m.isMeshStandardMaterial || m.map || m.transparent || m.bumpMap || m.vertexColors) return;
+    pieces.push(o);
+  });
+  if (pieces.length < 1) return;
+  const geos = [], couleurs = [];
+  let ombre = false;
+  pieces.forEach(o => {
+    o.updateMatrix();
+    const g = o.geometry.clone();
+    g.applyMatrix4(o.matrix);
+    geos.push(g);
+    couleurs.push(o.material.color);
+    ombre = ombre || o.castShadow;
+    groupe.remove(o);
+  });
+  const geo = fusionnerGeometries(geos);
+  const c = new Float32Array(geo.attributes.position.count * 3);
+  let k = 0;
+  geos.forEach((g, i) => { for (let v = 0; v < g.attributes.position.count; v++, k++) { c[k * 3] = couleurs[i].r; c[k * 3 + 1] = couleurs[i].g; c[k * 3 + 2] = couleurs[i].b; } });
+  geo.setAttribute("color", new THREE.BufferAttribute(c, 3));
+  const mesh = new THREE.Mesh(geo, materiauPersonnage);
+  mesh.castShadow = ombre;
+  mesh.receiveShadow = true;
+  groupe.add(mesh);
 }
 function fusionnerEnfants(groupe) {
   const groupes = new Map();
@@ -1440,12 +1483,13 @@ function creerPersonnage(o) {
   tete.add(fixe);
   corps.add(tete);
 
-  fusionnerEnfants(corps);
-  jambes.forEach(fusionnerEnfants);
-  genoux.forEach(fusionnerEnfants);
-  bras.forEach(fusionnerEnfants);
-  coudes.forEach(c => { fusionnerEnfants(c); c.children.forEach(enfant => { if (enfant.isGroup) fusionnerEnfants(enfant); }); });
-  fusionnerEnfants(fixe);
+  fusionnerPersonnage(corps);
+  jambes.forEach(fusionnerPersonnage);
+  genoux.forEach(fusionnerPersonnage);
+  bras.forEach(fusionnerPersonnage);
+  coudes.forEach(c => { fusionnerPersonnage(c); c.children.forEach(enfant => { if (enfant.isGroup) fusionnerPersonnage(enfant); }); });
+  fusionnerPersonnage(fixe);
+  yeux.forEach(fusionnerPersonnage);
   const ombreContact = new THREE.Mesh(geoOmbreContact, materiauOmbreContact);
   ombreContact.rotation.x = -Math.PI / 2;
   ombreContact.position.y = 0.012;
@@ -8029,6 +8073,8 @@ function appliquerMatieres() {
   Object.values(materiauxSol).forEach(m => { m.envMapIntensity = 0.65; m.needsUpdate = true; });
   MATERIAUX_FACADES.forEach(m => { m.envMapIntensity = 0.8; });
   materiauVerre.envMapIntensity = 1.3;
+  materiauPersonnage.envMapIntensity = 0.5;
+  materiauPersonnage.needsUpdate = true;
 }
 
 /* ---------- H4. Ciel de fin de journée, soleil et ville ---------- */
