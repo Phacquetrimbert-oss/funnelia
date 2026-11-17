@@ -50,3 +50,52 @@ Vue la plus chargée relevée hors banc (écran d'accueil, caméra vers la café
 
 Par étage : < 300 draw calls, < 300 000 triangles, < 60 matériaux.
 60 FPS en Moyen sur portable à GPU intégré, ≥ 45 FPS en Élevé.
+
+## Mesure « après » lot 2 (17 novembre 2026)
+
+Relevé automatique (Chrome sans écran, rendu logiciel) : la caméra regarde dans 4 directions
+au centre de chaque étage. Les compteurs (draw calls, triangles, matériaux) sont exacts ;
+les FPS ne sont pas significatifs dans ce mode et doivent être relevés sur une vraie machine
+avec Maj + F3.
+
+| Qualité | Étage | Draw calls (moy. / max) | Triangles rendus | Triangles visibles | castShadow | Matériaux visibles | Textures |
+|---|---|---|---|---|---|---|---|
+| moyen | RDC | 364 / 475 | 190 754 | 388 484 | 31 | 118 | 79 |
+| moyen | R+1 | 398 / 527 | 216 645 | 460 180 | 31 | 135 | 79 |
+| moyen | R+2 | 348 / 369 | 162 613 | 344 778 | 30 | 114 | 79 |
+| élevé | (identique à Moyen : le SSAO est réservé à Ultra) | | | | | | |
+| ultra (SSAO) | R+1 | 776 / 1 043 | 412 652 | 460 180 | 31 | 135 | 85 |
+
+« Triangles rendus » = ce que la carte graphique dessine réellement par image (objets hors
+champ exclus) ; « triangles visibles » = tout ce qui est affiché sur l'étage, devant ou
+derrière la caméra.
+
+### Progression chantier par chantier (R+1, qualité Moyen, draw calls moyens)
+
+| Étape | Draw calls | Matériaux visibles | Ce qui a changé |
+|---|---|---|---|
+| Avant | 1 195 | 293 | — |
+| 1. Géométries et matériaux partagés | 925 | 245 | une seule copie de chaque forme ; personnages : un objet par membre |
+| 2. InstancedMesh | 899 | 243 | écrans, cadres, affiches répétés dessinés en un seul appel |
+| 3. Décor fusionné | 831 | 210 | textes du décor regroupés dans un atlas, décor statique figé |
+| 4. Ombres statiques | 446 | 210 | carte d'ombres calculée une fois par étage ; personnages sans ombre portée |
+| 5. Moyen par défaut, SSAO en Ultra | 436 | 210 | Élevé n'a plus de SSAO (≈ Moyen) ; allègement automatique |
+| 6. Personnages éloignés allégés | 444 | 207 | têtes et coiffures simplifiées au-delà de 12 m |
+| 7. Interface | — | — | 0,093 → 0,035 ms par image pour l'interface |
+| 3 bis. Décor par matière | 403 | 167 | une couleur par sommet au lieu d'un matériau par couleur |
+| 3 ter. Cheveux et sourcils | 398 | 135 | même méthode pour les coiffures |
+
+En Élevé, R+1 passe de 2 335 à 398 draw calls (÷ 5,9).
+
+### Cibles
+
+| Cible par étage | Avant | Après lot 2 | Statut |
+|---|---|---|---|
+| < 300 draw calls | 965 – 1 177 (Moyen) | 348 – 398 | pas encore : les personnages en représentent ~60 % → lot 3 |
+| < 300 000 triangles rendus | 549 745 – 704 290 | 162 613 – 216 645 | ✔ |
+| < 60 matériaux | 253 – 293 | 114 – 135 | pas encore : personnages actuels → lot 3 |
+| Fuite de textures | 134 → 299 | stable (79) | ✔ corrigée |
+
+Les personnages actuels sont assemblés à partir de dizaines de pièces (≈ 25 objets chacun
+après fusion). Les remplacer au lot 3 par des personnages glTF de 1 à 3 objets ramène
+mécaniquement l'étage sous les 300 draw calls.
