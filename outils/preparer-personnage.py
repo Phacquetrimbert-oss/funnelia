@@ -7,10 +7,13 @@
 
 Usage : python3 outils/preparer-personnage.py <source.glb> <nom> <anim1,anim2,...>
 Exemple : python3 outils/preparer-personnage.py assets/personnages/sources/homme-costume.glb homme-costume Idle,Sitting,Standing,Walk,Clapping
+Avec « aucune », le modèle est livré sans animations : le jeu réutilise celles d'un modèle
+de référence au même squelette (un par genre), ce qui divise la taille des fichiers.
 """
 import base64, json, struct, sys
 
 source, nom, gardees = sys.argv[1], sys.argv[2], sys.argv[3].split(",")
+if gardees == ["aucune"]: gardees = []
 octets = open(source, "rb").read()
 long_json = struct.unpack("<I", octets[12:16])[0]
 gltf = json.loads(octets[20:20 + long_json])

@@ -1389,6 +1389,11 @@ function creerPersonnage(o) {
     mallette = false, tenue = "costume", haut = 0x64748b, bas = 0x334155, badge = false } = o;
   const femme = o.genre ? o.genre === "f" : ["longue", "chignon", "carre"].includes(o.coiffure);
   const variante = o.variante !== undefined ? o.variante : Math.floor(Math.random() * 1000);
+  // Lot 3 : personnage glTF riggé (1 draw call) ; personnage construit en code si les modèles manquent
+  if (!o.construit && personnagesGltfDisponibles()) {
+    const g = creerPersonnageGltf(o, femme, variante);
+    if (g) return g;
+  }
   grainPeau();
   // Diversité : carrure, âge (cheveux grisonnants), coiffure, accessoires
   const carrure = 0.93 + ((variante * 37) % 9) * 0.022;
@@ -1662,6 +1667,7 @@ function majNiveauDetail(perso) {
 }
 function animerVivant(perso, dt, { parle = false, regarder = true } = {}) {
   const u = perso.userData;
+  if (u.gltf) { animerVivantGltf(perso, dt, parle, regarder); return; }
   if (!u.tete) return;
   const proche = majNiveauDetail(perso);
   // Visage animé seulement de près et dans le champ de la caméra
@@ -1692,6 +1698,13 @@ function animerVivant(perso, dt, { parle = false, regarder = true } = {}) {
       sc.rotation.z = b.rz - b.s * fronce * 0.12;
     });
   } else if (u.bouche) u.bouche.scale.y = parle ? 1 + Math.abs(Math.sin(u.respiration * 13)) * 3.2 : 1;
+  const [lacet, tangage] = regardPersonnage(perso, u, parle, regarder);
+  u.tete.rotation.y += (lacet - u.tete.rotation.y) * Math.min(1, dt * 4);
+  u.tete.rotation.x += (tangage - u.tete.rotation.x) * Math.min(1, dt * 4);
+  animerYeuxEtAttitude(u, dt, lacet);
+}
+// Orientation de la tête (lacet, tangage) : vers le joueur proche, sinon vers l'interlocuteur ; attitude debout
+function regardPersonnage(perso, u, parle, regarder) {
   // Le regard se tourne vers le joueur quand il est proche et devant
   let lacet = 0, tangage = 0;
   if (regarder && jeu.mode !== "menu" && (u.etage ?? 1) === joueur.etage) {
@@ -1713,8 +1726,9 @@ function animerVivant(perso, dt, { parle = false, regarder = true } = {}) {
   }
   if (u.ecoute && !parle) tangage += Math.max(0, Math.sin(u.respiration * 2.6)) * 0.06;
   if (!lacet) tangage += u.regardBas || 0;
-  u.tete.rotation.y += (lacet - u.tete.rotation.y) * Math.min(1, dt * 4);
-  u.tete.rotation.x += (tangage - u.tete.rotation.x) * Math.min(1, dt * 4);
+  return [lacet, tangage];
+}
+function animerYeuxEtAttitude(u, dt, lacet) {
   // Mouvements des yeux (saccades) : le regard ne reste jamais figé
   if (u.yeux) {
     u.saccade -= dt;
@@ -1770,6 +1784,7 @@ function montrerTelephone(mesh, visible) {
 }
 
 function animerMarche(perso, t, bouge) {
+  if (perso.userData.gltf) { marcherGltf(perso, bouge); return; }
   const { corps, jambes, genoux, bras, coudes, mallette } = perso.userData;
   if (!bouge) { corps.rotation.y = 0; poser(perso, "debout", t); return; }
   t *= perso.userData.demarche || 1;
@@ -1800,7 +1815,7 @@ function tournerVers(mesh, angle, dt, vitesse = 10) {
 const materiauCravateJoueur = new THREE.MeshLambertMaterial({ color: 0x1d4ed8 });
 const joueur = {
   x: POINT_POSTE.x, z: POINT_POSTE.z, rayon: 0.3, vitesse: 3.2, bouge: false, t: 0,
-  mesh: creerPersonnage({ peau: 0xf1c7a3, cheveux: 0x3b2a1f, genre: "h", variante: 0, costume: 0x1e293b, materiauCravate: materiauCravateJoueur, mallette: true })
+  mesh: creerPersonnage({ peau: 0xf1c7a3, cheveux: 0x3b2a1f, genre: "h", variante: 0, costume: 0x1e293b, materiauCravate: materiauCravateJoueur, mallette: true, construit: true })
 };
 scene.add(joueur.mesh);
 
@@ -2014,6 +2029,7 @@ function articulations(u) {
 }
 function poser(mesh, pose, t) {
   const u = mesh.userData;
+  if (u.gltf) { poserGltf(mesh, pose); return; }
   if (!u.articulations) u.articulations = articulations(u);
   const avant = [];
   for (let k = 0; k < u.articulations.length; k += 2) avant.push(u.articulations[k][u.articulations[k + 1]]);
@@ -7648,13 +7664,13 @@ function boucle() {
   majPortesAscenseurs(dt);
   majPortiques(dt);
   majPassants(dt);
-  majPersonnagesGltf(dt);
   majLieu(dt);
   majDestination();
   animerVisagesCollaborateurs(dt);
   animerVisagesFigurants(dt);
   majEntreprise(dt);
   pnjs.forEach(p => { if (p.mesh.visible) animerVivant(p.mesh, dt, { parle: jeu.focus === p.mesh && jeu.mode === "dialogue" }); });
+  majPersonnagesGltf(dt);
   majDidacticiel();
   joueur.t += dt;
   animerMarche(joueur.mesh, joueur.t, joueur.bouge);
@@ -11173,7 +11189,8 @@ function equiperFigurant(f) {
 // Objets en main : tasse, ordinateur portable, dossier
 function objetsMain(mesh) {
   if (mesh.userData.objetsMain) return mesh.userData.objetsMain;
-  const coude = mesh.userData.coudes[1];
+  const gltf = !!mesh.userData.gltf;
+  const coude = gltf ? null : mesh.userData.coudes[1];
   const tasse = new THREE.Group();
   tasse.add(pos(cylindre(0.035, 0.03, 0.09, 0xf8fafc, 10), 0, 0, 0));
   tasse.add(pos(cylindre(0.033, 0.033, 0.005, 0x3b2a1e, 10), 0, 0.044, 0));
@@ -11182,7 +11199,8 @@ function objetsMain(mesh) {
   const dossier = pos(boite(0.24, 0.02, 0.31, 0x1e3a8a), 0, 0, 0.02);
   dossier.rotation.x = 1.3;
   const o = { tasse: pos(tasse, 0, -0.33, 0.06), portable: pos(portable, 0.03, -0.3, 0.08), dossier: pos(dossier, 0.03, -0.3, 0.08), actuel: null };
-  [o.tasse, o.portable, o.dossier].forEach(m => { m.visible = false; sansOmbrePortee(m); coude.add(m); });
+  if (gltf) { o.tasse.position.set(0, 0.06, 0.04); o.portable.position.set(0, 0.04, 0.12); o.dossier.position.set(0, 0.04, 0.1); }
+  [o.tasse, o.portable, o.dossier].forEach(m => { m.visible = false; sansOmbrePortee(m); if (gltf) attacherMain(mesh, m); else coude.add(m); });
   mesh.userData.objetsMain = o;
   return o;
 }
@@ -11442,12 +11460,21 @@ document.addEventListener("keydown", e => {
    ---------------------------------------------------------------------
    Modèles riggés CC0 (voir CREDITS.md), embarqués en base64 dans
    assets/personnages/*.js : chargés par <script>, donc compatibles file://.
-   Au chargement, les morceaux de couleur du modèle sont fusionnés en un
-   seul maillage (1 draw call) ; la couleur est portée par les sommets.
+   Au chargement, les zones de couleur d'un modèle sont fusionnées en un
+   seul maillage (1 draw call) ; la couleur est portée par les sommets,
+   ce qui permet d'habiller chaque personnage sans nouveau matériau.
+   Le corps est animé par AnimationMixer (repos, assis, marche) ; la tête
+   reste pilotée par le jeu (regard vers le joueur ou l'interlocuteur).
    ===================================================================== */
 const modelesGltf = {};
 const personnagesGltf = [];
-const HAUTEUR_GLTF = 1.74;
+// Un modèle de référence par genre porte les animations ; les autres les réutilisent (même squelette)
+const MODELES_PERSONNAGES = {
+  h: { reference: "homme-costume", costume: ["homme-costume", "homme-costume", "homme-costume", "homme-chemise"], ville: ["homme-chemise"] },
+  f: { reference: "femme-veste", costume: ["femme-veste", "femme-veste", "femme-robe"], ville: ["femme-decontractee", "femme-robe"] }
+};
+const HAUTEUR_GLTF = { h: 1.76, f: 1.66 };
+const DISTANCE_ANIMATION = 30;
 let materiauGltf = null;
 
 function base64VersTampon(texte) {
@@ -11455,17 +11482,30 @@ function base64VersTampon(texte) {
   for (let i = 0; i < brut.length; i++) octets[i] = brut.charCodeAt(i);
   return octets.buffer;
 }
-// Décode un modèle embarqué ; en cas d'absence ou d'erreur, le jeu continue sans lui
+// Décode un modèle embarqué ; en cas d'absence ou d'erreur, le jeu garde les personnages d'origine
 function chargerModele(nom) {
   const donnees = window.MODELES_FUNNELIA && window.MODELES_FUNNELIA[nom];
-  if (!donnees || !THREE.GLTFLoader) return Promise.resolve(null);
+  if (!donnees || !THREE.GLTFLoader || !THREE.SkeletonUtils) return Promise.resolve(null);
   return new Promise(resolve => {
-    new THREE.GLTFLoader().parse(base64VersTampon(donnees), "", gltf => {
-      modelesGltf[nom] = preparerModele(gltf);
-      resolve(modelesGltf[nom]);
-    }, erreur => { console.warn("Modèle " + nom + " illisible", erreur); resolve(null); });
+    try {
+      new THREE.GLTFLoader().parse(base64VersTampon(donnees), "", gltf => {
+        modelesGltf[nom] = preparerModele(gltf);
+        resolve(modelesGltf[nom]);
+      }, erreur => { console.warn("Modèle " + nom + " illisible", erreur); resolve(null); });
+    } catch (erreur) { console.warn("Modèle " + nom + " illisible", erreur); resolve(null); }
   });
 }
+async function chargerPersonnagesGltf() {
+  for (const genre of ["h", "f"]) {
+    const m = MODELES_PERSONNAGES[genre];
+    const noms = [...new Set([m.reference, ...m.costume, ...m.ville])];
+    for (const nom of noms) await chargerModele(nom);
+    const ref = modelesGltf[m.reference];
+    noms.forEach(nom => { if (modelesGltf[nom] && ref && !modelesGltf[nom].animations.length) modelesGltf[nom].animations = ref.animations; });
+  }
+}
+const personnagesGltfDisponibles = () => ["h", "f"].every(g => { const r = modelesGltf[MODELES_PERSONNAGES[g].reference]; return r && r.animations.length; });
+
 // Fusionne les primitives (une par matériau) en un seul maillage à couleurs par sommet
 function preparerModele(gltf) {
   const morceaux = [];
@@ -11476,8 +11516,9 @@ function preparerModele(gltf) {
   morceaux.forEach(m => {
     const g = m.geometry, n = g.attributes.position.count;
     attributs.forEach(a => { for (let i = 0; i < n * g.attributes[a].itemSize; i++) tableaux[a].push(g.attributes[a].array[i]); });
+    // glTF stocke des couleurs linéaires ; le jeu travaille en sRGB
     const c = m.material.color.clone().convertLinearToSRGB();
-    zones.push({ nom: m.material.name, debut: decalage, nombre: n, couleur: c });
+    zones.push({ nom: m.material.name, debut: decalage, nombre: n });
     for (let i = 0; i < n; i++) tableaux.color.push(c.r, c.g, c.b);
     const idx = g.index ? g.index.array : [...Array(n).keys()];
     for (let i = 0; i < idx.length; i++) index.push(idx[i] + decalage);
@@ -11490,71 +11531,157 @@ function preparerModele(gltf) {
   geo.setAttribute("skinWeight", new THREE.Float32BufferAttribute(tableaux.skinWeight, 4));
   geo.setAttribute("color", new THREE.Float32BufferAttribute(tableaux.color, 3));
   geo.setIndex(index);
+  // Sphère englobante élargie : le personnage reste visible quand l'animation le déforme (assis, bras levés)
   geo.computeBoundingSphere();
-  if (!materiauGltf) materiauGltf = new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.72, metalness: 0 });
+  geo.boundingSphere.radius *= 1.4;
+  if (!materiauGltf) materiauGltf = new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.72, metalness: 0.03 });
   // Le premier morceau garde le squelette et reçoit tout ; les autres disparaissent
   const principal = morceaux[0];
   principal.geometry = geo;
   principal.material = materiauGltf;
   morceaux.slice(1).forEach(m => m.parent.remove(m));
-  // Mise à l'échelle : le modèle mesure HAUTEUR_GLTF mètres
   gltf.scene.updateMatrixWorld(true);
   const boite = new THREE.Box3().setFromObject(gltf.scene);
-  const echelle = HAUTEUR_GLTF / (boite.max.y - boite.min.y);
-  return { scene: gltf.scene, animations: gltf.animations, geometrie: geo, zones, echelle, variantes: {} };
+  return { scene: gltf.scene, animations: gltf.animations, geometrie: geo, zones, hauteur: boite.max.y - boite.min.y, variantes: {} };
 }
-// Géométrie recolorée (partagée entre personnages de même tenue) : { Shirt: "#1f2937", Skin: ... }
+// Géométrie recolorée, partagée entre personnages de même tenue : { Shirt: 0x1f2937, Skin: ... }
 function geometrieTenue(modele, couleurs) {
-  const cle = JSON.stringify(couleurs || {});
+  const cle = JSON.stringify(couleurs);
   if (modele.variantes[cle]) return modele.variantes[cle];
   const geo = modele.geometrie.clone(), tab = geo.attributes.color.array;
+  geo.boundingSphere = modele.geometrie.boundingSphere;
   modele.zones.forEach(z => {
-    if (!couleurs || !couleurs[z.nom]) return;
+    if (couleurs[z.nom] === undefined) return;
     const c = new THREE.Color(couleurs[z.nom]);
     for (let i = z.debut; i < z.debut + z.nombre; i++) { tab[i * 3] = c.r; tab[i * 3 + 1] = c.g; tab[i * 3 + 2] = c.b; }
   });
   modele.variantes[cle] = geo;
   return geo;
 }
-// Crée un personnage animé (squelette propre, géométrie et matériau partagés)
-function creerPersonnageGltf(nom, { couleurs = null, animation = "Idle", etage = 0 } = {}) {
+// Traduit l'apparence d'un personnage du jeu (peau, cheveux, tenue) en modèle + couleurs de zones
+function tenueGltf(o, femme, variante) {
+  const genre = femme ? "f" : "h";
+  const tenue = o.tenue === "ville" ? "ville" : "costume";
+  const liste = MODELES_PERSONNAGES[genre][tenue];
+  const nom = liste[variante % liste.length];
+  const age = (variante * 13) % 10;
+  const cheveux = new THREE.Color(o.cheveux ?? 0x3b2a1f).offsetHSL(0, 0, (((variante * 7) % 5) - 2) * 0.018);
+  if (age >= 7) cheveux.lerp(new THREE.Color(0xb9b5ae), age >= 9 ? 0.75 : 0.4);
+  const costume = o.costume ?? 0x1e293b, haut = o.haut ?? 0x64748b, bas = o.bas ?? 0x334155;
+  const chemise = femme ? 0xf1ede6 : [0xf8fafc, 0xdbeafe, 0xf8fafc, 0xe2e8f0][variante % 4];
+  const c = { Skin: o.peau ?? 0xd8a47f, Hair: cheveux.getHex(), HairBase: cheveux.clone().multiplyScalar(0.8).getHex(), Eyebrows: cheveux.clone().multiplyScalar(0.7).getHex(), Eyes: 0x1f1a17 };
+  if (nom === "homme-costume") Object.assign(c, { Shirt: costume, Pants: costume, TieTexture: chemise });
+  else if (nom === "femme-veste") Object.assign(c, { Jacket: costume, LightJacket: costume, Shirt: chemise, Pants: costume });
+  else if (nom === "femme-robe") Object.assign(c, { Dress: tenue === "costume" ? costume : haut });
+  else Object.assign(c, { Shirt: tenue === "costume" ? chemise : haut, Pants: tenue === "costume" ? costume : bas });
+  return { nom, couleurs: c };
+}
+// Personnage glTF avec la même interface que creerPersonnage : un groupe dont userData sert à l'animation
+function creerPersonnageGltf(o, femme, variante) {
+  const { nom, couleurs } = tenueGltf(o, femme, variante);
   const modele = modelesGltf[nom];
   if (!modele) return null;
   const racine = THREE.SkeletonUtils.clone(modele.scene);
-  racine.scale.multiplyScalar(modele.echelle);
-  racine.traverse(o => {
-    if (o.isSkinnedMesh) { o.geometry = geometrieTenue(modele, couleurs); o.castShadow = false; o.receiveShadow = true; o.frustumCulled = false; }
+  const taille = HAUTEUR_GLTF[femme ? "f" : "h"] * (0.97 + (variante % 7) * 0.012);
+  racine.scale.multiplyScalar(taille / modele.hauteur);
+  let tete = null, main = null;
+  racine.traverse(n => {
+    if (n.isSkinnedMesh) { n.geometry = geometrieTenue(modele, couleurs); n.castShadow = false; n.receiveShadow = true; }
+    if (n.isBone && n.name === "Head") tete = n;
+    if (n.isBone && n.name === "MiddleHandR") main = n; // GLTFLoader retire les points des noms
   });
-  const groupe = new THREE.Group();
-  groupe.add(racine);
+  const g = new THREE.Group();
+  g.add(racine);
   const mixer = new THREE.AnimationMixer(racine);
   const actions = {};
   modele.animations.forEach(clip => { actions[clip.name] = mixer.clipAction(clip); });
-  const perso = { objet: groupe, mixer, actions, etage, courante: null };
-  jouerAnimation(perso, animation, 0);
+  // Position de repos de la tête : certains clips ne l'animent pas, le regard doit repartir de là à chaque image
+  const perso = { groupe: g, mixer, actions, courante: null, tete, teteRepos: tete ? tete.quaternion.clone() : null, main, attente: 0 };
+  g.userData = { gltf: perso, femme, expression: "neutre", respiration: Math.random() * 6, attitude: "ballants", attitudeFin: 3 + Math.random() * 10,
+    regardBas: 0, demarche: 0.9 + Math.random() * 0.2, teteLacet: 0, teteTangage: 0 };
+  jouerAnimation(perso, "Idle", 0);
   // Départ décalé : deux personnages voisins ne bougent pas en même temps
   mixer.update(Math.random() * 3);
   personnagesGltf.push(perso);
-  return perso;
+  return g;
 }
 function jouerAnimation(perso, nom, fondu = 0.3) {
   const suivante = perso.actions[nom];
   if (!suivante || perso.courante === suivante) return;
   suivante.reset().play();
-  if (perso.courante) perso.courante.crossFadeTo(suivante, fondu, false);
+  if (perso.courante && fondu > 0) perso.courante.crossFadeTo(suivante, fondu, false);
+  else if (perso.courante) perso.courante.stop();
   perso.courante = suivante;
 }
-// Animations : uniquement pour l'étage affiché
-function majPersonnagesGltf(dt) {
-  personnagesGltf.forEach(p => { if (ETAGES[p.etage].groupe.visible) p.mixer.update(dt); });
+// Équivalents glTF de poser / animerMarche / animerVivant
+function poserGltf(mesh, pose) {
+  const u = mesh.userData;
+  if (pose === "ecran") u.expression = "concentre";
+  else if (pose === "parle") u.expression = u.expression === "concentre" ? "neutre" : u.expression;
+  u.regardBas = pose === "ecran" ? 0.13 : pose === "tel" ? 0.4 : 0;
+  const p = u.gltf;
+  jouerAnimation(p, pose === "assis" || pose === "ecran" ? "Sitting" : "Idle", 0.35);
+  if (p.courante) p.courante.timeScale = 1;
 }
-// Personnage de test (lot 3, étape 1) : un collaborateur en costume dans le hall, près de l'accueil
-function installerPersonnageTest() {
-  const p = creerPersonnageGltf("homme-costume", { animation: "Idle", etage: 0, couleurs: { Shirt: "#1e293b", Pants: "#1e293b", TieTexture: "#e8ecf1", Skin: "#c58c62", Hair: "#3b2a20", Eyes: "#1f1a17" } });
-  if (!p) return;
-  p.objet.position.set(8.2, 0, 7.4);
-  p.objet.rotation.y = 0.5;
-  ETAGES[0].groupe.add(p.objet);
+function marcherGltf(mesh, bouge) {
+  const u = mesh.userData;
+  if (!bouge) { poserGltf(mesh, "debout"); return; }
+  u.regardBas = 0;
+  jouerAnimation(u.gltf, "Walk", 0.25);
+  u.gltf.courante.timeScale = u.demarche;
+}
+function animerVivantGltf(perso, dt, parle, regarder) {
+  const u = perso.userData;
+  u.respiration += dt;
+  u.parleActif = parle;
+  const [lacet, tangage] = regardPersonnage(perso, u, parle, regarder);
+  u.teteLacet += (lacet - u.teteLacet) * Math.min(1, dt * 4);
+  u.teteTangage += (tangage - u.teteTangage) * Math.min(1, dt * 4);
+  animerYeuxEtAttitude(u, dt, lacet);
+}
+// Visible si tous ses parents le sont (étage affiché)
+function estAffiche(o) {
+  for (; o; o = o.parent) if (!o.visible) return false;
+  return true;
+}
+const quaternionTemp = new THREE.Quaternion(), quaternionParent = new THREE.Quaternion(), axeTemp = new THREE.Vector3();
+// Tourne la tête autour d'un axe exprimé dans le repère du monde
+function tournerTete(tete, axeMonde, angle) {
+  if (Math.abs(angle) < 0.001) return;
+  tete.parent.getWorldQuaternion(quaternionParent).invert();
+  axeTemp.copy(axeMonde).applyQuaternion(quaternionParent).normalize();
+  tete.quaternion.premultiply(quaternionTemp.setFromAxisAngle(axeTemp, angle));
+}
+const AXE_Y = new THREE.Vector3(0, 1, 0), axeDroite = new THREE.Vector3();
+// Animations : seulement pour les personnages affichés, proches et dans le champ ; les lointains à 20 images/s
+function majPersonnagesGltf(dt) {
+  personnagesGltf.forEach(p => {
+    const g = p.groupe;
+    if (!estAffiche(g)) return;
+    g.getWorldPosition(vecteurTemp);
+    const d2 = camera.position.distanceToSquared(vecteurTemp);
+    if (d2 > DISTANCE_ANIMATION * DISTANCE_ANIMATION || !frustumCamera.intersectsSphere(sphereTemp.set(vecteurTemp.setY(vecteurTemp.y + 0.9), 1.2))) { p.attente += dt; return; }
+    p.attente += dt;
+    if (d2 > 144 && p.attente < 0.05) return;
+    if (p.tete) p.tete.quaternion.copy(p.teteRepos);
+    p.mixer.update(p.attente);
+    p.attente = 0;
+    const u = g.userData;
+    if (p.tete && (u.teteLacet || u.teteTangage)) {
+      const angle = g.rotation.y + (g.parent ? g.parent.rotation.y : 0);
+      tournerTete(p.tete, AXE_Y, u.teteLacet);
+      tournerTete(p.tete, axeDroite.set(Math.cos(angle), 0, -Math.sin(angle)), u.teteTangage);
+    }
+  });
+}
+// Objets en main : accrochés à l'os de la main droite, en compensant l'échelle du squelette
+function attacherMain(mesh, objet) {
+  const main = mesh.userData.gltf.main;
+  mesh.updateMatrixWorld(true);
+  const echelle = main.getWorldScale(new THREE.Vector3()).x / (mesh.getWorldScale(new THREE.Vector3()).x || 1);
+  objet.scale.multiplyScalar(1 / echelle);
+  objet.position.multiplyScalar(1 / echelle);
+  main.add(objet);
 }
 
 /* =====================================================================
@@ -11570,8 +11697,8 @@ async function initialiser() {
   await etapeChargement(T("Préparation des matériaux…", "Preparing materials…"), 0.08, preparerTextures);
   await etapeChargement(T("Construction de l'immeuble…", "Building the offices…"), 0.25, construireDecor);
   await etapeChargement(T("Calcul des déplacements…", "Computing walking paths…"), 0.5, construireNavigations);
-  await etapeChargement(T("Arrivée des collaborateurs…", "Colleagues arriving…"), 0.58, () => chargerModele("homme-costume"));
-  await etapeChargement(T("Arrivée des collaborateurs…", "Colleagues arriving…"), 0.62, () => { installerPersonnageTest(); creerCollaborateurs(); creerFigurants(); construirePassants(); ajouterObjetsImmeuble(); installerEntreprise(); majEcransDynamiques(); changerEtage(1); });
+  await etapeChargement(T("Arrivée des collaborateurs…", "Colleagues arriving…"), 0.56, chargerPersonnagesGltf);
+  await etapeChargement(T("Arrivée des collaborateurs…", "Colleagues arriving…"), 0.62, () => { creerCollaborateurs(); creerFigurants(); construirePassants(); ajouterObjetsImmeuble(); installerEntreprise(); majEcransDynamiques(); changerEtage(1); });
   await etapeChargement(T("Réglage des matières…", "Tuning materials…"), 0.72, appliquerMatieres);
   await etapeChargement(T("Calcul des reflets…", "Computing reflections…"), 0.84, genererReflets);
   await etapeChargement(T("Réglage de l'image…", "Tuning the picture…"), 0.95, configurerRendu);
