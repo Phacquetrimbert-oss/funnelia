@@ -1,8 +1,18 @@
 /* =====================================================================
-   DE PROSPECT À CLIENT · VELTIS ACADEMY — feuille de style
+   FUNNELIA · Du prospect au client — feuille de style
    ===================================================================== */
 
 :root {
+  /* Marque Funnelia */
+  --marque: #0b1f3a;
+  --marque-accent: #c2410c;
+  --marque-clair: #fff7ed;
+  /* Étapes du tunnel de conversion */
+  --etape-prospect: #64748b;
+  --etape-lead: #2a78d6;
+  --etape-opportunite: #6250d6;
+  --etape-client: #15803d;
+  /* Interface */
   --fond: #f8fafc;
   --blanc: #ffffff;
   --texte: #0f172a;
@@ -41,7 +51,7 @@ html, body {
 input, select, textarea { -webkit-user-select: text; user-select: text; font: inherit; }
 
 #scene { position: fixed; inset: 0; touch-action: none; }
-#scene canvas { display: block; }
+#scene canvas { display: block; cursor: crosshair; }
 #etiquettes { position: fixed; inset: 0; pointer-events: none; overflow: hidden; }
 
 .cache { display: none !important; }
@@ -322,7 +332,8 @@ body.avec-panneau.panneau-reduit .hud { right: calc(var(--largeur-panneau) + 28p
   width: min(800px, calc(100vw - 32px));
   max-height: calc(100vh - 160px);
   overflow-y: auto;
-  background: var(--blanc);
+  background: rgba(255, 255, 255, 0.94);
+  backdrop-filter: blur(10px);
   border-radius: 12px;
   padding: 14px 18px 14px;
   box-shadow: var(--ombre);
@@ -526,20 +537,14 @@ body.avec-panneau .dialogue { width: min(800px, calc(100vw - var(--largeur-panne
 .segment-option.actif { background: var(--principal); color: #fff; }
 .profil-description { font-size: 13px; color: #334155; background: var(--surface); border-radius: 8px; padding: 9px 12px; margin: 10px 0 4px; line-height: 1.5; }
 
-/* ---------- Tunnel de conversion et posture commerciale ---------- */
-:root {
-  --requin: #64748b;      /* étape Prospect */
-  --chasseur: #2a78d6;    /* étape Lead */
-  --conseiller: #6250d6;  /* étape Opportunité */
-  --partenaire: #15803d;  /* étape Client */
-}
-[data-posture="prospect"] { --pst: var(--requin); }
-[data-posture="lead"] { --pst: var(--chasseur); }
-[data-posture="opportunite"] { --pst: var(--conseiller); }
-[data-posture="client"] { --pst: var(--partenaire); }
+/* ---------- Tunnel de conversion : couleurs des étapes (définies dans :root) ---------- */
+[data-posture="prospect"] { --pst: var(--etape-prospect); }
+[data-posture="lead"] { --pst: var(--etape-lead); }
+[data-posture="opportunite"] { --pst: var(--etape-opportunite); }
+[data-posture="client"] { --pst: var(--etape-client); }
 
-.intro-requin { margin-top: 10px; padding: 10px 14px; border-left: 3px solid var(--texte); background: var(--surface); border-radius: 4px; color: #334155; }
-.intro-requin strong { color: var(--texte); }
+.intro-fil { margin-top: 10px; padding: 10px 14px; border-left: 3px solid var(--texte); background: var(--surface); border-radius: 4px; color: #334155; }
+.intro-fil strong { color: var(--texte); }
 
 /* HUD : tunnel compact et posture */
 .tunnel-ligne { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 6px; margin-top: 8px; font-size: 12px; color: #334155; }
@@ -549,7 +554,7 @@ body.avec-panneau .dialogue { width: min(800px, calc(100vw - var(--largeur-panne
 .tl-sortie { background: var(--couleur-niveau); color: var(--texte-niveau); }
 .tl-fleche { color: var(--gris-clair); font-weight: 700; }
 .tl-taux { margin-left: auto; font-weight: 800; font-variant-numeric: tabular-nums; }
-.posture-mini { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; font-weight: 600; --pst: var(--requin); }
+.posture-mini { display: flex; align-items: center; gap: 8px; margin-top: 8px; font-size: 12px; font-weight: 600; --pst: var(--etape-prospect); }
 .posture-mini:empty { display: none; }
 .pst-icone { flex-shrink: 0; display: inline-grid; place-items: center; width: 18px; height: 18px; border-radius: 3px; background: var(--pst); color: #fff; font-size: 11px; font-weight: 700; line-height: 1; font-variant-numeric: tabular-nums; }
 .pst-nom { color: var(--pst); min-width: 70px; }
@@ -566,7 +571,7 @@ body.avec-panneau .dialogue { width: min(800px, calc(100vw - var(--largeur-panne
 .pst-niveau strong { display: block; color: var(--pst); }
 .pst-niveau small { display: block; color: var(--gris); line-height: 1.3; }
 .pst-niveau.actif { opacity: 1; border-color: var(--pst); box-shadow: inset 0 0 0 1px var(--pst); }
-.pst-jauge { position: relative; height: 8px; margin: 10px 0 6px; border-radius: 4px; background: linear-gradient(90deg, var(--requin), var(--chasseur) 35%, var(--conseiller) 62%, var(--partenaire)); opacity: 0.9; }
+.pst-jauge { position: relative; height: 8px; margin: 10px 0 6px; border-radius: 4px; background: linear-gradient(90deg, var(--etape-prospect), var(--etape-lead) 35%, var(--etape-opportunite) 62%, var(--etape-client)); opacity: 0.9; }
 .pst-jauge span { display: none; }
 .pst-jauge i { position: absolute; top: -4px; width: 4px; height: 16px; margin-left: -2px; background: var(--texte); border-radius: 2px; }
 .pst-texte { font-size: 13px; line-height: 1.5; color: #334155; margin: 6px 0 0; }
@@ -587,7 +592,7 @@ body.avec-panneau .dialogue { width: min(800px, calc(100vw - var(--largeur-panne
 .tn-valeur { font-variant-numeric: tabular-nums; }
 .tn-taux { font-size: 11px; color: var(--gris); padding-left: 12px; }
 .tn-global { margin-top: 8px; font-size: 13px; }
-.bloc-posture { border-left: 4px solid var(--requin); }
+.bloc-posture { border-left: 4px solid var(--etape-prospect); }
 .pst-evolution { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 4px 0 8px; }
 .pst-carte { display: flex; flex-direction: column; font-weight: 800; color: var(--pst); border: 2px solid var(--pst); border-radius: 8px; padding: 4px 10px; background: var(--blanc); }
 .pst-carte small { font-weight: 600; color: var(--gris); font-size: 11px; }
@@ -632,8 +637,9 @@ body.avec-panneau .dialogue { width: min(800px, calc(100vw - var(--largeur-panne
 .tableau-historique td { padding: 6px 8px; border-bottom: 1px solid var(--surface); }
 .pastille-etape { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
 .statut { font-weight: 700; }
-.statut-ok { color: var(--succes); }
-.statut-ko { color: var(--erreur); }
+.statut-ok { color: var(--succes); font-weight: 700; }
+.statut-ko { color: var(--erreur); font-weight: 700; }
+.statut-alerte { color: var(--alerte); font-weight: 700; }
 .statut-stop { color: #92400e; }
 .vide { font-size: 13px; color: var(--gris); margin: 4px 0; }
 .accueil-pied { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; }
@@ -833,22 +839,14 @@ body.clavier .btn-action-pm:focus { outline: 3px solid #2563eb; outline-offset: 
    FOR DISTRIBUTION · interface : marque, démarrage, accueil, notifications,
    aide, paramètres, badges, certificat, didacticiel, accessibilité
    ===================================================================== */
-:root {
-  --marque: #0b1f3a;
-  --marque-accent: #c2410c;
-  --marque-clair: #fff7ed;
-}
 
 /* Marque */
 .marque { display: flex; align-items: center; gap: 12px; }
-.marque-logo { display: inline-grid; grid-template-columns: 1fr 1fr; width: 42px; height: 42px; border-radius: 10px; overflow: hidden; flex-shrink: 0; box-shadow: 0 2px 8px rgba(11, 31, 58, 0.25); }
-.marque-logo span { display: grid; place-items: center; font-weight: 800; font-size: 16px; color: #fff; }
-.marque-logo span:first-child { background: var(--marque); }
-.marque-logo span:last-child { background: var(--marque-accent); }
+.marque-logo { display: inline-block; width: 42px; height: 42px; flex-shrink: 0; border-radius: 10px; box-shadow: 0 2px 8px rgba(11, 31, 58, 0.25); }
+.marque-logo svg { display: block; width: 100%; height: 100%; }
 .marque-nom { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: -0.01em; color: var(--marque); }
 .marque-devise { margin: 0; font-size: 12px; font-weight: 600; color: var(--gris); text-transform: uppercase; letter-spacing: 0.06em; }
 .marque-grande .marque-logo { width: 64px; height: 64px; border-radius: 14px; }
-.marque-grande .marque-logo span { font-size: 24px; }
 .marque-grande .marque-nom { font-size: 30px; }
 
 /* Démarrage */
@@ -991,7 +989,6 @@ body.sans-animation *, body.sans-animation *::before, body.sans-animation *::aft
 /* ===== Vue à la première personne : viseur ===== */
 .viseur { position: fixed; left: 50%; top: 50%; width: 8px; height: 8px; margin: -4px 0 0 -4px; border-radius: 50%; background: rgba(255, 255, 255, 0.9); box-shadow: 0 0 0 1.5px rgba(15, 23, 42, 0.55); pointer-events: none; z-index: 5; transition: transform 0.12s, background 0.12s; }
 .viseur.actif { transform: scale(1.9); background: #fdba74; box-shadow: 0 0 0 2px rgba(124, 45, 18, 0.7); }
-#scene canvas { cursor: crosshair; }
 
 /* =====================================================================
    Interface de jeu : chargement, boussole, invite, dialogues cinéma
@@ -1006,7 +1003,7 @@ body.sans-animation *, body.sans-animation *::before, body.sans-animation *::aft
 .chargement-texte { margin: 0; color: #cbd5e1; font-size: 14px; font-weight: 500; letter-spacing: 0.02em; }
 
 /* Boussole d'objectifs */
-.boussole { position: fixed; top: 98px; left: 50%; transform: translateX(-50%); width: min(440px, 34vw); height: 44px; z-index: 4; pointer-events: none; overflow: hidden;
+.boussole { position: fixed; top: 98px; left: 50%; transform: translateX(-50%); width: min(440px, 34vw); height: 44px; z-index: 4; pointer-events: none; overflow: visible;
   background: linear-gradient(90deg, transparent, rgba(11, 31, 58, 0.62) 18%, rgba(11, 31, 58, 0.62) 82%, transparent); border-radius: 8px; }
 .boussole-bande, .boussole-reperes { position: absolute; inset: 0; }
 .grad { position: absolute; top: 6px; transform: translateX(-50%); color: rgba(255, 255, 255, 0.55); font-size: 10px; font-weight: 700; }
@@ -1021,7 +1018,6 @@ body.sans-animation *, body.sans-animation *::before, body.sans-animation *::aft
 .repere-tache i { background: #f97316; }
 .repere-demande i { background: #facc15; border-radius: 50%; transform: none; }
 .repere.bord { opacity: 0.6; }
-.boussole { overflow: visible; }
 
 /* Invite d'action sous le viseur */
 .invite { position: fixed; left: 50%; top: calc(50% + 26px); transform: translateX(-50%); display: flex; align-items: center; gap: 8px; padding: 6px 12px 6px 6px; border-radius: 999px;
@@ -1040,7 +1036,6 @@ body::after { bottom: 0; }
 body.mode-dialogue::before, body.mode-dialogue::after { height: 7vh; }
 body.mode-dialogue .hud, body.mode-dialogue .minimap, body.mode-dialogue .boussole, body.mode-dialogue .panneau-mission { opacity: 0.18; transition: opacity 0.3s; }
 body.mode-dialogue .dialogue { z-index: 12; }
-.dialogue { background: rgba(255, 255, 255, 0.94); backdrop-filter: blur(10px); }
 .dialogue-texte.en-frappe::after { content: "▍"; color: var(--marque-accent); animation: clignote 0.8s steps(2) infinite; }
 @keyframes clignote { 50% { opacity: 0; } }
 
@@ -1091,7 +1086,7 @@ body.mode-dialogue .etage-chip { opacity: 0.18; transition: opacity 0.3s; }
   background: linear-gradient(160deg, #d7dbe0 0%, #9aa1aa 45%, #c9ced4 100%); box-shadow: 0 24px 60px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.7); }
 .asc-ecran { display: flex; align-items: center; justify-content: center; gap: 10px; height: 64px; border-radius: 10px; background: #0b0b0c; box-shadow: inset 0 2px 10px rgba(0, 0, 0, 0.8); margin-bottom: 12px; }
 .asc-niveau { font-size: 34px; font-weight: 800; color: #fbbf24; letter-spacing: 0.06em; font-variant-numeric: tabular-nums; text-shadow: 0 0 12px rgba(251, 191, 36, 0.55); }
-.asc-fleche { font-size: 22px; color: #fbbf24; min-width: 22px; text-align: center; animation: clignote 0.8s steps(2) infinite; }
+.asc-fleche { font-size: 22px; color: #fbbf24; min-width: 22px; text-align: center; animation: clignoteDoux 0.8s steps(2) infinite; }
 .asc-fleche:empty { animation: none; }
 .asc-titre { font-size: 12px; font-weight: 800; letter-spacing: 0.08em; text-transform: uppercase; color: #1f2937; margin: 0 2px 8px; }
 .asc-boutons { display: flex; flex-direction: column; gap: 8px; }
@@ -1115,7 +1110,7 @@ body.mode-dialogue .etage-chip { opacity: 0.18; transition: opacity 0.3s; }
 .asc-aide { margin-top: 12px; font-size: 11px; font-weight: 600; color: #1f2937; text-align: center; }
 body.mode-ascenseur .hud, body.mode-ascenseur .minimap, body.mode-ascenseur .panneau-mission { opacity: 0.25; transition: opacity 0.3s; }
 @keyframes lieuApparition { from { opacity: 0; transform: translateY(-50%) translateX(16px); } to { opacity: 1; transform: translateY(-50%); } }
-@keyframes clignote { 50% { opacity: 0.25; } }
+@keyframes clignoteDoux { 50% { opacity: 0.25; } }
 
 /* Plan de l'immeuble */
 .plan-immeuble { display: flex; flex-direction: column; gap: 14px; }
@@ -1139,7 +1134,6 @@ body.mode-ascenseur .hud, body.mode-ascenseur .minimap, body.mode-ascenseur .pan
 .lg-joueur { background: #0f172a; } .lg-collegue { background: #475569; } .lg-autre { background: #a8a29e; } .lg-mission { background: var(--couleur-niveau); } .lg-dest { background: #16a34a; }
 .carnet { list-style: none; padding: 0; margin: 6px 0 0; display: grid; gap: 8px; }
 .carnet li { padding: 8px 12px; border: 1px solid var(--bord); border-radius: 8px; background: var(--surface); font-size: 13px; }
-.statut-ok { color: var(--succes); font-weight: 700; } .statut-alerte { color: var(--alerte); font-weight: 700; } .statut-ko { color: var(--erreur); font-weight: 700; }
 @media (max-width: 760px) {
   .plan-corps { grid-template-columns: 1fr; }
   .etage-chip { bottom: auto; top: 64px; width: auto; right: 14px; }
@@ -1148,7 +1142,7 @@ body.mode-ascenseur .hud, body.mode-ascenseur .minimap, body.mode-ascenseur .pan
 }
 
 /* =====================================================================
-   Conversio : tableau de bord commercial et animations du tunnel
+   Funnelia : tableau de bord commercial et animations du tunnel
    ===================================================================== */
 .btn-kpi-accueil { font-weight: 700; }
 .kpi-onglets { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 14px; border-bottom: 1px solid var(--bord); padding-bottom: 10px; }
