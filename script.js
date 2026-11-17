@@ -7650,6 +7650,7 @@ function reglages() {
   if (!r.sensibilite) r.sensibilite = 1;
   if (r.boussole === undefined) r.boussole = true;
   if (r.balancement === undefined) r.balancement = true;
+  if (r.qualiteAuto === undefined) r.qualiteAuto = true;
   return resultats.reglages;
 }
 function appliquerReglages() {
@@ -7667,7 +7668,10 @@ function ouvrirReglages() {
       <div class="config-champ"><span class="config-label">${T("Langue du jeu", "Game language")}</span>${segment("langue", LANGUE, [["fr", "Français"], ["en", "English"]])}
         <p class="info-texte">${T("Changer de langue recharge le jeu ; vos résultats sont conservés.", "Changing language reloads the game; your results are kept.")}</p></div>
       <div class="config-champ"><span class="config-label">${T("Qualité graphique", "Graphics quality")}</span>${segment("graphismes", qualiteActive(), [["faible", T("Faible", "Low")], ["moyen", T("Moyen", "Medium")], ["eleve", T("Élevé", "High")], ["ultra", "Ultra"]])}
-        <p class="info-texte">${T("Élevé et Ultra ajoutent l'occlusion ambiante, le halo lumineux et des ombres plus fines. Choisissez Moyen ou Faible sur un ordinateur portable peu puissant.", "High and Ultra add ambient occlusion, light bloom and finer shadows. Choose Medium or Low on a less powerful laptop.")}</p></div>
+        <p class="info-texte">${T("Moyen convient à la plupart des ordinateurs. Élevé affine la résolution et les ombres ; Ultra ajoute l'occlusion ambiante (plus exigeant).", "Medium suits most computers. High sharpens resolution and shadows; Ultra adds ambient occlusion (more demanding).")}</p></div>
+      <div class="config-champ"><span class="config-label">${T("Allègement automatique", "Automatic lightening")}</span>${segment("qualiteAuto", r.qualiteAuto ? "oui" : "non", [["oui", T("Activé", "On")], ["non", T("Désactivé", "Off")]])}
+        <p class="info-texte" id="etat-allegement">${T("Si l'image ralentit, le jeu baisse la résolution, puis le halo, puis les ombres.", "If the picture slows down, the game lowers the resolution, then the bloom, then the shadows.")} ${T("État actuel", "Current state")} : <strong>${ALLEGEMENTS[rendu.allegement || 0]}</strong>.</p>
+        ${rendu.allegement ? `<button type="button" id="btn-retablir-rendu" class="btn-secondaire btn-petit">${T("Rétablir l'image complète", "Restore the full picture")}</button>` : ""}</div>
       <div class="config-champ"><span class="config-label">${T("Affichage en jeu", "In-game display")}</span>${segment("boussole", r.boussole ? "oui" : "non", [["oui", T("Boussole visible", "Compass on")], ["non", T("Boussole masquée", "Compass off")]])}${segment("fps", r.fps ? "oui" : "non", [["non", T("FPS masqués", "FPS hidden")], ["oui", T("Afficher les FPS", "Show FPS")]])}</div>
       <div class="config-champ"><span class="config-label">${T("Vue", "View")}</span>${segment("balancement", r.balancement ? "oui" : "non", [["oui", T("Balancement de la marche", "Head bob on")], ["non", T("Vue stable", "Head bob off")]])}${segment("inverser", r.inverser ? "oui" : "non", [["non", T("Axe vertical normal", "Normal vertical axis")], ["oui", T("Axe vertical inversé", "Inverted vertical axis")]])}</div>
       <div class="config-champ"><span class="config-label">${T("Taille du texte", "Text size")}</span>${segment("texte", r.texte, [["normal", T("Normale", "Normal")], ["grand", T("Grande", "Large")]])}</div>
@@ -7690,13 +7694,16 @@ function ouvrirReglages() {
         if (inp.name === "texte") r.texte = v;
         if (inp.name === "animations") r.animations = v === "oui";
         if (inp.name === "fov") r.fov = Number(v);
-        if (inp.name === "graphismes") { r.graphismes = v; sauverResultats(); configurerRendu(); }
+        if (inp.name === "graphismes") { r.graphismes = v; rendu.allegement = 0; sauverResultats(); configurerRendu(); }
+        if (inp.name === "qualiteAuto") r.qualiteAuto = v === "oui";
         if (["boussole", "fps", "balancement", "inverser"].includes(inp.name)) r[inp.name] = v === "oui";
         if (inp.name === "sensibilite") r.sensibilite = Number(v);
         if (inp.name === "son") { resultats.son = v === "oui"; majReglages(); }
         sauverResultats();
         appliquerReglages();
       }));
+      const retablir = racine.querySelector("#btn-retablir-rendu");
+      if (retablir) retablir.addEventListener("click", () => { retablirRendu(); retablir.remove(); racine.querySelector("#etat-allegement strong").textContent = ALLEGEMENTS[0]; });
       const b = racine.querySelector("#btn-relancer-didacticiel");
       b.addEventListener("click", () => { resultats.didacticiel = false; sauverResultats(); b.disabled = true; b.textContent = T("Le didacticiel sera proposé à la prochaine mission.", "The tutorial will be offered on the next mission."); });
     }
@@ -8354,13 +8361,13 @@ const rendu = { composeur: null, ssao: null, halo: null, fxaa: null, qualite: nu
 const QUALITES = {
   faible: { ratio: 1, ombres: 0, ssao: false, halo: false, post: false },
   moyen: { ratio: 1.25, ombres: 1024, ssao: false, halo: true, post: true },
-  eleve: { ratio: 1.5, ombres: 2048, ssao: true, halo: true, post: true },
+  eleve: { ratio: 1.5, ombres: 2048, ssao: false, halo: true, post: true },
   ultra: { ratio: 2, ombres: 4096, ssao: true, halo: true, post: true }
 };
 function qualiteParDefaut() {
   const mobile = /Android|iPhone|iPad|Mobile/i.test(navigator.userAgent);
   if (mobile) return "faible";
-  return renderer.capabilities.isWebGL2 ? "eleve" : "moyen";
+  return "moyen";
 }
 function qualiteActive() { return reglages().graphismes || qualiteParDefaut(); }
 function configurerRendu() {
@@ -8368,23 +8375,35 @@ function configurerRendu() {
   const q = QUALITES[nom] || QUALITES.eleve;
   rendu.qualite = nom;
   const largeur = window.innerWidth, hauteur = window.innerHeight;
-  const ratio = Math.min(window.devicePixelRatio || 1, q.ratio);
+  // Allègement automatique (0 à 4) : résolution réduite, puis halo, puis ombres désactivés
+  const allegement = rendu.allegement || 0;
+  const ratio = Math.max(0.6, Math.min(window.devicePixelRatio || 1, q.ratio) * [1, 0.85, 0.7, 0.7, 0.7][allegement]);
+  const ombres = allegement >= 4 ? 0 : q.ombres, halo = q.halo && allegement < 3;
   renderer.setPixelRatio(ratio);
   renderer.setSize(largeur, hauteur);
   // Ombres
-  renderer.shadowMap.enabled = q.ombres > 0;
+  renderer.shadowMap.enabled = ombres > 0;
   // Le soleil et le décor sont fixes : ombres calculées une fois (ici, puis à chaque changement d'étage)
   renderer.shadowMap.autoUpdate = false;
   renderer.shadowMap.needsUpdate = true;
-  soleil.castShadow = q.ombres > 0;
-  if (q.ombres && soleil.shadow.mapSize.x !== q.ombres) {
-    soleil.shadow.mapSize.set(q.ombres, q.ombres);
+  soleil.castShadow = ombres > 0;
+  if (ombres && soleil.shadow.mapSize.x !== ombres) {
+    soleil.shadow.mapSize.set(ombres, ombres);
     if (soleil.shadow.map) { soleil.shadow.map.dispose(); soleil.shadow.map = null; }
   }
   scene.traverse(o => { if (o.material && o.material.needsUpdate !== undefined && o.isMesh) o.material.needsUpdate = true; });
   // Chaîne de post-traitement
   const disponible = !!(THREE.EffectComposer && THREE.RenderPass && THREE.ShaderPass);
-  if (rendu.composeur) { rendu.composeur.renderTarget1.dispose(); rendu.composeur.renderTarget2.dispose(); }
+  // Libère toute l'ancienne chaîne (cibles du SSAO et du halo comprises) : plus de fuite de textures
+  if (rendu.composeur) {
+    rendu.composeur.passes.forEach(p => {
+      if (p.dispose) p.dispose();
+      if (p.fsQuad && p.fsQuad.dispose) p.fsQuad.dispose();
+      if (p.material && p.material.dispose) p.material.dispose();
+    });
+    rendu.composeur.renderTarget1.dispose();
+    rendu.composeur.renderTarget2.dispose();
+  }
   rendu.composeur = rendu.ssao = rendu.halo = rendu.fxaa = null;
   if (!q.post || !disponible) {
     renderer.toneMapping = THREE.ACESFilmicToneMapping;
@@ -8406,7 +8425,7 @@ function configurerRendu() {
     composeur.addPass(ssao);
     rendu.ssao = ssao;
   } else composeur.addPass(new THREE.RenderPass(scene, camera));
-  if (q.halo && THREE.UnrealBloomPass) {
+  if (halo && THREE.UnrealBloomPass) {
     rendu.halo = new THREE.UnrealBloomPass(new THREE.Vector2(largeur, hauteur), 0.42, 0.55, 1.0);
     composeur.addPass(rendu.halo);
   }
@@ -8546,13 +8565,26 @@ function majPerformances(dt) {
   const el = $("fps");
   el.classList.toggle("cache", !reglages().fps);
   if (reglages().fps) el.textContent = `${Math.round(performance_.moyenne)} FPS · ${T({ faible: "Faible", moyen: "Moyen", eleve: "Élevé", ultra: "Ultra" }[rendu.qualite] || "", { faible: "Low", moyen: "Medium", eleve: "High", ultra: "Ultra" }[rendu.qualite] || "")}`;
-  if (jeu.mode === "jeu" && !performance_.suggere && ["eleve", "ultra"].includes(rendu.qualite)) {
-    performance_.lentes = performance_.moyenne < 26 ? performance_.lentes + 1 : 0;
-    if (performance_.lentes >= 6) {
-      performance_.suggere = true;
-      message(T("L'image est un peu lente sur cet appareil : passez en qualité « Moyen » dans les Paramètres pour plus de fluidité.", "The picture is a little slow on this device: switch to “Medium” quality in Settings for smoother play."), "info", 6500);
-    }
+  // Image lente pendant 4 secondes : on allège d'un cran (au plus 4 crans), puis on laisse le temps de remesurer
+  if (jeu.mode === "jeu" && reglages().qualiteAuto !== false && (rendu.allegement || 0) < ALLEGEMENTS.length - 1) {
+    performance_.lentes = performance_.moyenne < SEUIL_FPS_ALLEGEMENT ? performance_.lentes + 1 : Math.min(0, performance_.lentes + 1);
+    if (performance_.lentes >= 4) { performance_.lentes = -4; allegerRendu(); }
   }
+}
+const SEUIL_FPS_ALLEGEMENT = 40;
+const ALLEGEMENTS = [
+  T("Image complète", "Full picture"), T("Résolution réduite", "Lower resolution"), T("Résolution réduite davantage", "Even lower resolution"),
+  T("Résolution réduite, halo lumineux coupé", "Lower resolution, light bloom off"), T("Résolution réduite, halo et ombres coupés", "Lower resolution, bloom and shadows off")
+];
+function allegerRendu() {
+  rendu.allegement = (rendu.allegement || 0) + 1;
+  configurerRendu();
+  message(T(`Image allégée pour rester fluide : ${ALLEGEMENTS[rendu.allegement].toLowerCase()}. Paramètres pour revenir en arrière.`, `Picture lightened to stay smooth: ${ALLEGEMENTS[rendu.allegement].toLowerCase()}. Settings to undo.`), "info", 5000);
+}
+function retablirRendu() {
+  rendu.allegement = 0;
+  performance_.lentes = -8;
+  configurerRendu();
 }
 
 /* ---------- I5. Statistiques affichées en pause ---------- */
@@ -11250,7 +11282,8 @@ const DUREE_BANC = { chauffe: 0.8, mesure: 2.5 };
 function lancerBanc() {
   if (bancTest.actif) return;
   basculerPanneauDebug(true);
-  bancTest.etat = { qualite: reglages().graphismes, etage: joueur.etage };
+  bancTest.etat = { qualite: reglages().graphismes, etage: joueur.etage, allegement: rendu.allegement || 0 };
+  rendu.allegement = 0;
   bancTest.file = [];
   ["faible", "moyen", "eleve", "ultra"].forEach(q => [0, 1, 2].forEach(n => bancTest.file.push({ q, n })));
   bancTest.resultats = [];
@@ -11302,6 +11335,7 @@ function executerBanc() {
 function finirBanc() {
   bancTest.actif = false;
   if (bancTest.etat.qualite === undefined) delete reglages().graphismes; else reglages().graphismes = bancTest.etat.qualite;
+  rendu.allegement = bancTest.etat.allegement;
   configurerRendu();
   afficherNiveau(joueur.etage);
   window.mesuresBanc = bancTest.resultats;
