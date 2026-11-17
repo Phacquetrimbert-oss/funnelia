@@ -2356,7 +2356,7 @@ function majEtiquettesVie() {
   const bulles = [];
   const placer = (el, p, hauteur, empiler = false) => {
     v.set(p.x, hauteur, p.z).project(camera);
-    if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) { el.style.display = "none"; return; }
+    if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) { ecrireStyle(el, "display", "none"); return; }
     const px = Math.round((v.x * 0.5 + 0.5) * w);
     let py = Math.round((-v.y * 0.5 + 0.5) * h);
     // Deux bulles voisines s'empilent au lieu de se chevaucher
@@ -2364,8 +2364,8 @@ function majEtiquettesVie() {
       for (let k = 0; k < 4 && bulles.some(b => Math.abs(b.x - px) < 200 && Math.abs(b.y - py) < 34); k++) py -= 36;
       bulles.push({ x: px, y: py });
     }
-    el.style.display = "flex";
-    el.style.transform = `translate(${px}px, ${py}px) translate(-50%, -100%)`;
+    ecrireStyle(el, "display", "flex");
+    ecrireStyle(el, "transform", `translate(${px}px, ${py}px) translate(-50%, -100%)`);
   };
   const enJeu = !["menu", "briefing", "bilan"].includes(jeu.mode);
   employes.forEach(e => {
@@ -2377,19 +2377,19 @@ function majEtiquettesVie() {
       const html = `<span class="c-nom">${echapper(e.def.nom)}</span><span class="c-info">${echapper(e.def.fonction)} · ${echapper(statut)}</span>`;
       if (e.etiquette.dataset.html !== html) { e.etiquette.innerHTML = html; e.etiquette.dataset.html = html; }
       placer(e.etiquette, p, (e.etat === "activite" && ["assis", "ecran"].includes(e.activite.lieu.pose) ? 1.85 : 2.2) + ETAGES[e.etage].y);
-    } else e.etiquette.style.display = "none";
+    } else ecrireStyle(e.etiquette, "display", "none");
     const montrerBulle = e.bulleFin > vie.temps && e.bulle && (enJeu ? d < 9 : e.etage === joueur.etage) && !e.enEchange && jeu.mode !== "dialogue";
     if (montrerBulle) {
       if (e.bulleEl.textContent !== e.bulle) e.bulleEl.textContent = e.bulle;
       placer(e.bulleEl, p, (e.etat === "activite" && ["assis", "ecran"].includes(e.activite.lieu.pose) ? 1.85 : 2.2) + (montrerNom ? 0.55 : 0) + ETAGES[e.etage].y, true);
-    } else e.bulleEl.style.display = "none";
+    } else ecrireStyle(e.bulleEl, "display", "none");
   });
   // Bandeaux des moments collectifs
   [["standup", { x: -11.1, z: -5.0 }, () => vie.standup.sujet], ["reunion", SALLE.agora.entree, () => (EN ? `Agora Room · ${vie.reunion.sujet}` : `Salle Agora · ${vie.reunion.sujet}`)], ["pot", { x: -4.4, z: 7.8 }, () => (EN ? `Cafeteria · ${vie.pot.motif}` : `Cafétéria · ${vie.pot.motif}`)]].forEach(([cle, point, texte]) => {
     let el = $(`bandeau-${cle}`);
     if (!el) { el = document.createElement("div"); el.id = `bandeau-${cle}`; el.className = "etiquette etq-evenement"; $("etiquettes").appendChild(el); }
     const actif = vie[cle] && vie[cle].participants.some(e => e.etat === "activite" && e.activite.type === cle);
-    if (!actif || !enJeu || joueur.etage !== 1) { el.style.display = "none"; return; }
+    if (!actif || !enJeu || joueur.etage !== 1) { ecrireStyle(el, "display", "none"); return; }
     const t = texte();
     if (el.textContent !== t) el.textContent = t;
     placer(el, point, 2.9);
@@ -2883,12 +2883,12 @@ function majEtiquettes() {
   const w = window.innerWidth, h = window.innerHeight;
   etiquettes.forEach(e => {
     const objet = e.cible.isObject3D ? e.cible : null;
-    if (!e.visible || jeu.mode === "menu" || (objet && !objet.visible) || (e.etage ?? 1) !== joueur.etage) { e.el.style.display = "none"; return; }
+    if (!e.visible || jeu.mode === "menu" || (objet && !objet.visible) || (e.etage ?? 1) !== joueur.etage) { ecrireStyle(e.el, "display", "none"); return; }
     const p = objet ? objet.position : e.cible;
     v.set(p.x, (p.y || 0) + e.hauteur + etageY(), p.z).project(camera);
-    if (v.z > 1 || Math.abs(v.x) > 1.2 || Math.abs(v.y) > 1.2) { e.el.style.display = "none"; return; }
-    e.el.style.display = "flex";
-    e.el.style.transform = `translate(${Math.round((v.x * 0.5 + 0.5) * w)}px, ${Math.round((-v.y * 0.5 + 0.5) * h)}px) translate(-50%, -100%)`;
+    if (v.z > 1 || Math.abs(v.x) > 1.2 || Math.abs(v.y) > 1.2) { ecrireStyle(e.el, "display", "none"); return; }
+    ecrireStyle(e.el, "display", "flex");
+    ecrireStyle(e.el, "transform", `translate(${Math.round((v.x * 0.5 + 0.5) * w)}px, ${Math.round((-v.y * 0.5 + 0.5) * h)}px) translate(-50%, -100%)`);
   });
 }
 
@@ -3532,7 +3532,19 @@ function calculerScore(statut, etoiles, erreurs) {
 /* ---------- A18. Plan du quartier (mini-carte) ---------- */
 const minimap = $("minimap");
 const ctxCarte = minimap.getContext("2d");
-function majMinimap() {
+// Écrit une propriété de style seulement si sa valeur change (moins de recalculs de la page)
+function ecrireStyle(el, propriete, valeur) {
+  const cle = `_${propriete}`;
+  if (el[cle] === valeur) return;
+  el[cle] = valeur;
+  el.style[propriete] = valeur;
+}
+// Mini-carte redessinée 10 fois par seconde au plus
+let minuterieMinimap = 0;
+function majMinimap(dt = 1) {
+  minuterieMinimap += dt;
+  if (minuterieMinimap < 0.1) return;
+  minuterieMinimap = 0;
   if (minimap.classList.contains("cache")) return;
   if (joueur.etage !== 1) { dessinerPlanNiveau(ctxCarte, minimap.width, minimap.height, joueur.etage, true); return; }
   dessinerPlanR1(ctxCarte, minimap.width, minimap.height, true);
@@ -7532,7 +7544,8 @@ function majInterface() {
   const horlogeEl = $("hud-horloge");
   if (jeu.mode !== "menu" && jeu.def) {
     const restant = jeu.finMinutes - jeu.minutes;
-    horlogeEl.textContent = `${formatHeure(jeu.minutes)} · ${jeu.affichage === "semaine" ? formatFin(jeu.finMinutes) : (EN ? `ends ${formatFin(jeu.finMinutes)}` : `fin ${formatFin(jeu.finMinutes)}`)}`;
+    const texteHorloge = `${formatHeure(jeu.minutes)} · ${jeu.affichage === "semaine" ? formatFin(jeu.finMinutes) : (EN ? `ends ${formatFin(jeu.finMinutes)}` : `fin ${formatFin(jeu.finMinutes)}`)}`;
+    if (horlogeEl.textContent !== texteHorloge) horlogeEl.textContent = texteHorloge;
     horlogeEl.classList.toggle("urgent", restant < (jeu.finMinutes - jeu.debutMinutes) * 0.1);
   }
   const viseur = $("viseur");
@@ -7613,7 +7626,7 @@ function boucle() {
   majEtiquettes();
   majEtiquettesVie();
   majEtiquettesFigurants();
-  majMinimap();
+  majMinimap(dt);
   rendre();
   majInterfaceJeu(dt);
   debugFinImage();
@@ -8530,8 +8543,8 @@ function majBoussole() {
   boussole.graduations.forEach(g => {
     const e = ecart(g.angle);
     const visibleG = Math.abs(e) < champ / 2;
-    g.el.style.display = visibleG ? "block" : "none";
-    if (visibleG) g.el.style.left = `${(0.5 + e / champ) * largeur}px`;
+    ecrireStyle(g.el, "display", visibleG ? "block" : "none");
+    if (visibleG) ecrireStyle(g.el, "left", `${(0.5 + e / champ) * largeur}px`);
   });
   const marques = objectifsBoussole().map(o => {
     const e = ecart(cap(o.x - joueur.x, o.z - joueur.z));
@@ -9910,9 +9923,9 @@ function majEtiquettesFigurants() {
   const w = window.innerWidth, h = window.innerHeight;
   const placer = (el, p, hauteur) => {
     v.set(p.x, hauteur, p.z).project(camera);
-    if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) { el.style.display = "none"; return; }
-    el.style.display = "flex";
-    el.style.transform = `translate(${Math.round((v.x * 0.5 + 0.5) * w)}px, ${Math.round((-v.y * 0.5 + 0.5) * h)}px) translate(-50%, -100%)`;
+    if (v.z > 1 || Math.abs(v.x) > 1.1 || Math.abs(v.y) > 1.1) { ecrireStyle(el, "display", "none"); return; }
+    ecrireStyle(el, "display", "flex");
+    ecrireStyle(el, "transform", `translate(${Math.round((v.x * 0.5 + 0.5) * w)}px, ${Math.round((-v.y * 0.5 + 0.5) * h)}px) translate(-50%, -100%)`);
   };
   const visible = !["menu", "briefing", "bilan"].includes(jeu.mode);
   figurants.forEach(f => {
@@ -9926,11 +9939,11 @@ function majEtiquettesFigurants() {
       const html = `<span class="c-nom">${echapper(f.def.nom)}${deja ? " ·  ✓" : ""}</span><span class="c-info">${echapper(f.def.fonction)} · ${echapper(f.def.entreprise)}</span>`;
       if (f.etiquette.dataset.html !== html) { f.etiquette.innerHTML = html; f.etiquette.dataset.html = html; }
       placer(f.etiquette, p, base);
-    } else f.etiquette.style.display = "none";
+    } else ecrireStyle(f.etiquette, "display", "none");
     if (f.bulleFin > vie.temps && f.bulle && d < 9 && !f.enEchange && jeu.mode !== "dialogue") {
       if (f.bulleEl.textContent !== f.bulle) f.bulleEl.textContent = f.bulle;
       placer(f.bulleEl, p, base + (montrerNom ? 0.55 : 0));
-    } else f.bulleEl.style.display = "none";
+    } else ecrireStyle(f.bulleEl, "display", "none");
   });
 }
 function figurantProche() {
