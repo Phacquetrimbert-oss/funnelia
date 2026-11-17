@@ -586,6 +586,8 @@ function fusionnerPersonnage(groupe) {
   mesh.receiveShadow = true;
   groupe.add(mesh);
 }
+// Objets mobiles (personnages et ce qu'ils portent) : pas d'ombre calculée, la carte d'ombres est statique
+function sansOmbrePortee(objet) { objet.traverse(o => { if (o.isMesh) o.castShadow = false; }); return objet; }
 function fusionnerEnfants(groupe) {
   const groupes = new Map();
   const aRetirer = [];
@@ -1578,6 +1580,7 @@ function creerPersonnage(o) {
   coudes.forEach(c => { fusionnerPersonnage(c); c.children.forEach(enfant => { if (enfant.isGroup) fusionnerPersonnage(enfant); }); });
   fusionnerPersonnage(fixe);
   yeux.forEach(fusionnerPersonnage);
+  sansOmbrePortee(g);
   const ombreContact = new THREE.Mesh(geoOmbreContact, materiauOmbreContact);
   ombreContact.rotation.x = -Math.PI / 2;
   ombreContact.position.y = 0.012;
@@ -1695,7 +1698,7 @@ function montrerTelephone(mesh, visible) {
     t.add(pos(new THREE.Mesh(new THREE.PlaneGeometry(0.064, 0.13), new THREE.MeshBasicMaterial({ color: new THREE.Color(0.55, 0.7, 1.1), toneMapped: false })), 0, 0, 0.0051));
     t.position.set(0, -0.34, 0.03);
     t.rotation.x = -0.25;
-    u.coudes[1].add(t);
+    u.coudes[1].add(sansOmbrePortee(t));
     u.telephone = t;
   }
   u.telephone.visible = visible;
@@ -8370,6 +8373,9 @@ function configurerRendu() {
   renderer.setSize(largeur, hauteur);
   // Ombres
   renderer.shadowMap.enabled = q.ombres > 0;
+  // Le soleil et le décor sont fixes : ombres calculées une fois (ici, puis à chaque changement d'étage)
+  renderer.shadowMap.autoUpdate = false;
+  renderer.shadowMap.needsUpdate = true;
   soleil.castShadow = q.ombres > 0;
   if (q.ombres && soleil.shadow.mapSize.x !== q.ombres) {
     soleil.shadow.mapSize.set(q.ombres, q.ombres);
@@ -8620,6 +8626,8 @@ function afficherNiveau(n) {
   soleil.position.set(-34, 21 + ETAGES[n].y, 16);
   soleil.target.position.set(0, ETAGES[n].y, 0);
   soleil.target.updateMatrixWorld();
+  // Ombres statiques : la carte d'ombres n'est recalculée qu'au changement d'étage
+  renderer.shadowMap.needsUpdate = true;
 }
 function changerEtage(n) {
   joueur.etage = n;
@@ -11036,14 +11044,14 @@ function equiperFigurant(f) {
     c.add(pos(cylindre(0.12, 0.12, 0.3, 0xfacc15, 10), 0.12, 0.85, 0));
     c.add(pos(cylindre(0.012, 0.012, 1.0, 0x9ca3af, 6), -0.18, 1.0, 0.1));
     [-0.2, 0.2].forEach(dx => [-0.15, 0.15].forEach(dz => c.add(pos(cylindre(0.04, 0.04, 0.03, 0x111827, 8), dx, 0.05, dz))));
-    f.mesh.add(pos(c, 0, 0, 0.62));
+    f.mesh.add(pos(sansOmbrePortee(c), 0, 0, 0.62));
   } else if (o === "diable") {
     const c = new THREE.Group();
     c.add(pos(boite(0.42, 0.34, 0.32, 0xb59b7c), 0, 0.3, 0));
     c.add(pos(boite(0.36, 0.26, 0.28, 0xc8ad8a), 0, 0.6, 0));
     c.add(pos(boite(0.04, 1.1, 0.04, 0x374151), -0.2, 0.6, -0.18));
     c.add(pos(boite(0.04, 1.1, 0.04, 0x374151), 0.2, 0.6, -0.18));
-    f.mesh.add(pos(c, 0, 0, 0.55));
+    f.mesh.add(pos(sansOmbrePortee(c), 0, 0, 0.55));
   }
   if (o) f.mesh.userData.objetsPortes = true;
 }
@@ -11059,7 +11067,7 @@ function objetsMain(mesh) {
   const dossier = pos(boite(0.24, 0.02, 0.31, 0x1e3a8a), 0, 0, 0.02);
   dossier.rotation.x = 1.3;
   const o = { tasse: pos(tasse, 0, -0.33, 0.06), portable: pos(portable, 0.03, -0.3, 0.08), dossier: pos(dossier, 0.03, -0.3, 0.08), actuel: null };
-  [o.tasse, o.portable, o.dossier].forEach(m => { m.visible = false; coude.add(m); });
+  [o.tasse, o.portable, o.dossier].forEach(m => { m.visible = false; sansOmbrePortee(m); coude.add(m); });
   mesh.userData.objetsMain = o;
   return o;
 }
