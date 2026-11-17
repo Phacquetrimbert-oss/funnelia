@@ -1237,8 +1237,17 @@ function matMeches(couleur) {
     textureMeches.wrapS = THREE.RepeatWrapping;
     textureMeches.repeat.set(5, 1);
   }
-  if (!materiauxMeches[couleur]) materiauxMeches[couleur] = new THREE.MeshStandardMaterial({ color: new THREE.Color(couleur).multiplyScalar(1.12), map: textureMeches, alphaTest: 0.5, roughness: 0.6, side: THREE.DoubleSide });
-  return materiauxMeches[couleur];
+  // Un seul matériau pour tous : la couleur de chaque chevelure est portée par sa géométrie
+  if (!materiauxMeches.partage) materiauxMeches.partage = new THREE.MeshStandardMaterial({ color: new THREE.Color(1.12, 1.12, 1.12), vertexColors: true, map: textureMeches, alphaTest: 0.5, roughness: 0.6, side: THREE.DoubleSide });
+  return materiauxMeches.partage;
+}
+// Copie d'une géométrie avec une couleur par sommet (permet de partager un seul matériau)
+function colorier(geo, couleur) {
+  const g = geo.clone();
+  const c = new THREE.Color(couleur), n = g.attributes.position.count, tab = new Float32Array(n * 3);
+  for (let i = 0; i < n; i++) { tab[i * 3] = c.r; tab[i * 3 + 1] = c.g; tab[i * 3 + 2] = c.b; }
+  g.setAttribute("color", new THREE.BufferAttribute(tab, 3));
+  return g;
 }
 let materiauCheveuxRelief = null;
 function reliefCheveux() {
@@ -1259,9 +1268,9 @@ function reliefCheveux() {
   return t;
 }
 const materiauxCheveux = {};
-function matCheveux(couleur) {
-  if (!materiauxCheveux[couleur]) materiauxCheveux[couleur] = new THREE.MeshStandardMaterial({ color: couleur, roughness: 0.55, metalness: 0.05, bumpMap: reliefCheveux(), bumpScale: 0.0015, side: THREE.DoubleSide });
-  return materiauxCheveux[couleur];
+function matCheveux() {
+  if (!materiauxCheveux.partage) materiauxCheveux.partage = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: 0.55, metalness: 0.05, bumpMap: reliefCheveux(), bumpScale: 0.0015, side: THREE.DoubleSide });
+  return materiauxCheveux.partage;
 }
 
 /* Tête : sphère déformée en visage, couleurs de peau, lèvres et joues par sommet */
@@ -1547,7 +1556,7 @@ function creerPersonnage(o) {
     paupiereBas.position.set(s * 0.031, 0.128, 0.0705);
     paupiereBas.rotation.x = 0.1;
     fixe.add(paupiereBas);
-    const sourcil = boite(femme ? 0.023 : 0.026, femme ? 0.0026 : 0.0028 + (variante % 3) * 0.0006, 0.004, new THREE.Color(cheveuxV).multiplyScalar(0.7).getHex(), false);
+    const sourcil = new THREE.Mesh(colorier(geoBoite(femme ? 0.023 : 0.026, femme ? 0.0026 : 0.0028 + (variante % 3) * 0.0006, 0.004), new THREE.Color(cheveuxV).multiplyScalar(0.7)), materiauPersonnage);
     sourcil.rotation.z = s * (femme ? -0.16 : -0.08);
     sourcil.userData.base = { y: 0.149, rz: sourcil.rotation.z, s };
     tete.add(pos(sourcil, s * 0.033, 0.149, 0.0935));
@@ -1573,28 +1582,28 @@ function creerPersonnage(o) {
   dents.visible = false;
   bouche.add(dents);
   tete.add(bouche);
-  const coiffure = new THREE.Mesh(geometrieCoiffure(style === "queue" ? "chignon" : style), matCheveux(cheveuxV));
+  const coiffure = new THREE.Mesh(colorier(geometrieCoiffure(style === "queue" ? "chignon" : style), cheveuxV), matCheveux());
   coiffure.castShadow = true;
   coiffure.position.y = 0.11;
   tete.add(coiffure);
-  const meches = new THREE.Mesh(coiffure.geometry, matMeches(cheveuxV));
+  const meches = new THREE.Mesh(coiffure.geometry, matMeches());
   meches.scale.setScalar(1.028);
   meches.position.y = 0.108;
   tete.add(meches);
-  if (style === "chignon") fixe.add(m(sph(0.042), matCheveux(cheveuxV), 0, 0.17, -0.1));
+  if (style === "chignon") fixe.add(m(colorier(sph(0.042), cheveuxV), matCheveux(), 0, 0.17, -0.1));
   if (style === "queue") {
     // Queue de cheval attachée haut derrière la tête
-    const queue = m(new THREE.CylinderGeometry(0.03, 0.01, 0.24, 12), matCheveux(cheveuxV), 0, 0.075, -0.118);
+    const queue = m(colorier(new THREE.CylinderGeometry(0.03, 0.01, 0.24, 12), cheveuxV), matCheveux(), 0, 0.075, -0.118);
     queue.rotation.x = 0.22;
     fixe.add(queue);
     fixe.add(m(new THREE.TorusGeometry(0.022, 0.006, 6, 12), 0x1c1917, 0, 0.19, -0.108, false));
   }
   if (style === "longue") {
-    const meche = m(new THREE.CylinderGeometry(0.088, 0.075, 0.2, 20, 1, true, Math.PI * 0.55, Math.PI * 0.9), matCheveux(cheveuxV), 0, 0.02, -0.012);
+    const meche = m(colorier(new THREE.CylinderGeometry(0.088, 0.075, 0.2, 20, 1, true, Math.PI * 0.55, Math.PI * 0.9), cheveuxV), matCheveux(), 0, 0.02, -0.012);
     fixe.add(meche);
   }
   if (barbe) {
-    const b = new THREE.Mesh(geometrieBarbe(), matCheveux(cheveuxV));
+    const b = new THREE.Mesh(colorier(geometrieBarbe(), cheveuxV), matCheveux());
     b.position.y = 0.11;
     tete.add(b);
   }
@@ -1624,7 +1633,7 @@ function creerPersonnage(o) {
   // Détails du visage affichés seulement de près (fluidité)
   const details = [meches, bouche, ...sourcils, ...yeux, ...paupieres];
   const styleBase = style === "queue" ? "chignon" : style;
-  const lod = { visage, coiffure, tete: [visage.geometry, geometrieTete(femme, peau, rase, true)], cheveux: [coiffure.geometry, geometrieCoiffure(styleBase, true)] };
+  const lod = { visage, coiffure, tete: [visage.geometry, geometrieTete(femme, peau, rase, true)], cheveux: [coiffure.geometry, colorier(geometrieCoiffure(styleBase, true), cheveuxV)] };
   g.userData = { corps, jambes, genoux, bras, coudes, mallette, tete, paupieres, bouche, femme, yeux, sourcils, details, lod, levres: courbe, interieur, dents, sourire: 0.35, expression: "neutre", gestuelle: 0.7 + ((variante * 11) % 7) * 0.1, clignement: Math.random() * 4, respiration: Math.random() * 6,
     attitude: "ballants", attitudeFin: 3 + Math.random() * 10, saccade: Math.random() * 2, regardYeux: { x: 0, y: 0 }, regardBas: 0, demarche: 0.9 + Math.random() * 0.2 };
   return g;
