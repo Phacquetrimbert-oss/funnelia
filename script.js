@@ -360,7 +360,10 @@ redimensionner();
 
 const materiaux = {};
 function mat(couleur) {
-  if (!materiaux[couleur]) materiaux[couleur] = new THREE.MeshStandardMaterial({ color: couleur, roughness: 0.82, metalness: 0 });
+  if (!materiaux[couleur]) {
+    materiaux[couleur] = new THREE.MeshStandardMaterial({ color: couleur, roughness: 0.82, metalness: 0 });
+    materiaux[couleur].userData.teinte = couleur;
+  }
   return materiaux[couleur];
 }
 function maillage(geo, couleur, ombre = true) {
@@ -652,6 +655,26 @@ function fusionnable(m) {
   return false;
 }
 function figer(o) { o.updateMatrix(); o.matrixAutoUpdate = false; }
+/* Décor : les objets d'une même matière (mat, brillant, métal, tissu) partagent un seul matériau,
+   quelle que soit leur couleur ; la couleur est conservée dans la géométrie (couleurs par sommet).
+   Un étage entier tient ainsi en quelques appels de dessin au lieu d'un par teinte. */
+const materiauxDecor = new Map();
+function proprietesTeinte(teinte) {
+  const p = PROPRIETES_MATIERES[teinte] || {};
+  const tissu = TEINTES_TISSU.has(teinte);
+  return { roughness: tissu ? 0.95 : p.roughness ?? 0.82, metalness: p.metalness ?? 0, tissu };
+}
+function materiauDecor(teinte) {
+  const p = proprietesTeinte(teinte);
+  const cle = `${p.roughness}|${p.metalness}|${p.tissu}`;
+  if (!materiauxDecor.has(cle)) {
+    const m = new THREE.MeshStandardMaterial({ vertexColors: true, roughness: p.roughness, metalness: p.metalness });
+    if (p.tissu && TEXTURES.tissu) { m.bumpMap = texture(TEXTURES.tissu, 4, 4); m.bumpScale = 0.0025; }
+    m.userData.decor = true;
+    materiauxDecor.set(cle, m);
+  }
+  return materiauxDecor.get(cle);
+}
 function fusionnerDecor(racine) {
   racine.updateMatrixWorld(true);
   // Géométries exprimées dans le repère de la racine (les niveaux sont décalés en hauteur)
@@ -662,16 +685,25 @@ function fusionnerDecor(racine) {
     if (!o.isMesh || o.isInstancedMesh || o.userData.dynamique) return;
     const m = o.material;
     if (!fusionnable(m)) return;
-    const cle = `${m.uuid}|${o.castShadow ? 1 : 0}|${o.renderOrder}`;
-    if (!groupes.has(cle)) groupes.set(cle, { materiau: m, ombre: o.castShadow, geos: [] });
+    const materiau = m.userData.teinte !== undefined ? materiauDecor(m.userData.teinte) : m;
+    const cle = `${materiau.uuid}|${o.castShadow ? 1 : 0}|${o.renderOrder}`;
+    if (!groupes.has(cle)) groupes.set(cle, { materiau, ombre: o.castShadow, geos: [], couleurs: [] });
     const g = o.geometry.clone();
     g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(versRacine, o.matrixWorld));
     groupes.get(cle).geos.push(g);
+    groupes.get(cle).couleurs.push(m.color);
     aRetirer.push(o);
   });
   aRetirer.forEach(o => o.parent.remove(o));
-  groupes.forEach(({ materiau, ombre, geos }) => {
-    const mesh = new THREE.Mesh(fusionnerGeometries(geos), materiau);
+  groupes.forEach(({ materiau, ombre, geos, couleurs }) => {
+    const geo = fusionnerGeometries(geos);
+    if (materiau.userData.decor) {
+      const c = new Float32Array(geo.attributes.position.count * 3);
+      let k = 0;
+      geos.forEach((g, i) => { for (let v = 0; v < g.attributes.position.count; v++, k++) { c[k * 3] = couleurs[i].r; c[k * 3 + 1] = couleurs[i].g; c[k * 3 + 2] = couleurs[i].b; } });
+      geo.setAttribute("color", new THREE.BufferAttribute(c, 3));
+    }
+    const mesh = new THREE.Mesh(geo, materiau);
     mesh.castShadow = ombre;
     mesh.receiveShadow = true;
     racine.add(mesh);
@@ -8211,6 +8243,7 @@ function appliquerMatieres() {
   materiauVerre.envMapIntensity = 1.3;
   materiauPersonnage.envMapIntensity = 0.5;
   materiauPersonnage.needsUpdate = true;
+  materiauxDecor.forEach(m => { m.envMapIntensity = 0.5; m.needsUpdate = true; });
 }
 
 /* ---------- H4. Ciel de fin de journée, soleil et ville ---------- */
