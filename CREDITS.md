@@ -11,7 +11,11 @@
 
 | Modèle | Auteur | Licence | Source | Fichiers |
 |---|---|---|---|---|
-| Man in Suit (animations : Idle, Sitting, Standing, Walk, Clapping) | Quaternius | CC0 1.0 (domaine public) | https://poly.pizza/m/mQnGoME1ez | `assets/personnages/sources/homme-costume.glb` (original), `assets/personnages/homme-costume.glb` / `.js` (version allégée) |
+| Man in Suit — porte les animations masculines (Idle, Sitting, Standing, Walk, Clapping) | Quaternius | CC0 1.0 (domaine public) | https://poly.pizza/m/mQnGoME1ez | `assets/personnages/sources/homme-costume.glb` (original), `assets/personnages/homme-costume.glb` / `.js` (version allégée) |
+| Man in Long Sleeves | Quaternius | CC0 1.0 | https://poly.pizza/m/DLptRuewTn | `homme-chemise` |
+| Woman (veste) — porte les animations féminines | Quaternius | CC0 1.0 | https://poly.pizza/m/AQsd9ngvKU | `femme-veste` |
+| Woman Casual | Quaternius | CC0 1.0 | https://poly.pizza/m/jpKRgGDxhk | `femme-decontractee` |
+| Woman in Dress | Quaternius | CC0 1.0 | https://poly.pizza/m/zMyPlQXBzq | `femme-robe` |
 
 Les versions allégées sont produites par `outils/preparer-personnage.py` : seules les animations
 utiles au bureau sont conservées, et le fichier est encodé en base64 pour fonctionner en `file://`.

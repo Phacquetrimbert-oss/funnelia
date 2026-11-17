@@ -128,3 +128,21 @@ mécaniquement l'étage sous les 300 draw calls.
 | Textures | 134 → 299 (fuite) | 63 – 87, stable |
 
 Cibles « 60 FPS en Moyen » et « ≥ 45 FPS en Élevé » : **atteintes** sur cette machine.
+
+## Lot 3 : personnages glTF (17 novembre 2026)
+
+Les 50 personnages (collaborateurs, visiteurs, figurants, passants) sont remplacés par des
+modèles riggés CC0 : **1 draw call et ~2 000 triangles chacun**, contre 33 objets et ~16 900
+triangles pour un personnage construit en code.
+
+| Qualité Moyen | Draw calls (moy. / max) | Triangles rendus | Triangles visibles | Matériaux visibles |
+|---|---|---|---|---|
+| RDC | 249 / 281 (avant : 364) | 111 018 (avant : 190 754) | 125 962 | 107 |
+| R+1 | 267 / 296 (avant : 398) | 129 536 (avant : 216 645) | 151 714 | 123 |
+| R+2 | 248 / 274 (avant : 348) | 96 684 (avant : 162 613) | 114 988 | 103 |
+
+Cibles par étage : < 300 draw calls ✔, < 300 000 triangles ✔. Les matériaux (103 à 123)
+restent au-dessus de 60 : ce sont ceux du décor (écrans, affiches, textures de sol et de
+façade), pas des personnages, qui partagent tous un seul matériau.
+
+Textures en mémoire : +50 environ, une petite texture d'os par squelette animé (Three.js r128).
