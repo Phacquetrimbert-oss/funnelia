@@ -378,6 +378,7 @@ function geometriePartagee(cle, fabrique) {
 const geoBoite = (w, h, d) => geometriePartagee(`b|${w}|${h}|${d}`, () => new THREE.BoxGeometry(w, h, d));
 const geoCylindre = (rh, rb, h, s) => geometriePartagee(`c|${rh}|${rb}|${h}|${s}`, () => new THREE.CylinderGeometry(rh, rb, h, s));
 const geoSphere = (r, s) => geometriePartagee(`s|${r}|${s}`, () => new THREE.SphereGeometry(r, s, Math.round(s * 0.75)));
+const geoPlan = (w, h) => geometriePartagee(`p|${w}|${h}`, () => new THREE.PlaneGeometry(w, h));
 const boite = (w, h, d, c, ombre = true) => maillage(geoBoite(w, h, d), c, ombre);
 const cylindre = (rh, rb, h, c, s = 12) => maillage(geoCylindre(rh, rb, h, s), c);
 const sphere = (r, c, s = 16) => maillage(geoSphere(r, s), c);
@@ -562,6 +563,38 @@ function fusionnerEnfants(groupe) {
     groupe.add(mesh);
   });
 }
+/* Objets identiques répétés (même géométrie, même matériau) : un seul InstancedMesh
+   par type, dessiné en un appel. Utilisé pour ce que la fusion ne peut pas regrouper :
+   écrans d'ordinateur, pictogrammes… (objets texturés). */
+function instancierRepetitions(racine, minimum = 3) {
+  racine.updateMatrixWorld(true);
+  const versRacine = new THREE.Matrix4().copy(racine.matrixWorld).invert();
+  const familles = new Map();
+  racine.traverse(o => {
+    if (!o.isMesh || o.isInstancedMesh || o.userData.dynamique || Array.isArray(o.material)) return;
+    const cle = `${o.geometry.uuid}|${o.material.uuid}|${o.castShadow ? 1 : 0}`;
+    if (!familles.has(cle)) familles.set(cle, []);
+    familles.get(cle).push(o);
+  });
+  let remplaces = 0;
+  familles.forEach(liste => {
+    if (liste.length < minimum) return;
+    const modele = liste[0];
+    const inst = new THREE.InstancedMesh(modele.geometry, modele.material, liste.length);
+    liste.forEach((o, i) => {
+      inst.setMatrixAt(i, new THREE.Matrix4().multiplyMatrices(versRacine, o.matrixWorld));
+      o.parent.remove(o);
+    });
+    inst.instanceMatrix.needsUpdate = true;
+    inst.castShadow = modele.castShadow;
+    inst.receiveShadow = modele.receiveShadow;
+    inst.frustumCulled = false;             // r128 ne tient pas compte de la position des instances pour le culling
+    inst.renderOrder = modele.renderOrder;
+    racine.add(inst);
+    remplaces += liste.length;
+  });
+  return remplaces;
+}
 function fusionnerDecor(racine) {
   racine.updateMatrixWorld(true);
   // Géométries exprimées dans le repère de la racine (les niveaux sont décalés en hauteur)
@@ -641,7 +674,7 @@ function creerBureau(g, x, z, ecranTexte = "Veltis One", chaise = true) {
   g.add(pos(boite(0.7, 0.42, 0.04, 0x111827), x, 1.08, z - 0.2));
   // Postes ordinaires : une application de travail ; postes particuliers : leur intitulé
   const ecran = ecranTexte === "Veltis One"
-    ? new THREE.Mesh(new THREE.PlaneGeometry(0.62, 0.34), materiauAppli(APPLIS[Math.floor(hasard(x, z, 4) * APPLIS.length)]))
+    ? new THREE.Mesh(geoPlan(0.62, 0.34), materiauAppli(APPLIS[Math.floor(hasard(x, z, 4) * APPLIS.length)]))
     : panneauTexte(0.62, 0.34, {
       largeur: 248, hauteur: 136, fond: "#f1f5f9", bandeau: "#1e3a8a",
       lignes: [{ texte: ecranTexte, taille: 22, gras: 700, couleur: "#1e3a8a" }, { texte: "▮▮▮▯  ▮▮▯▯  ▮▮▮▮", taille: 18, gras: 600, couleur: "#64748b" }], y: 48
@@ -1038,7 +1071,7 @@ function construireDecor() {
   construireCoques();
   scene.add(decor);
   fusionnerDecor(decor);
-  ETAGES.forEach(e => fusionnerDecor(e.groupe));
+  ETAGES.forEach(e => { fusionnerDecor(e.groupe); instancierRepetitions(e.groupe); });
 }
 
 /* ---------- A9. Personnages ---------- */
@@ -10451,8 +10484,11 @@ function textureCanvas(cle, L, H, dessin) {
   cacheTexturesL[cle] = t;
   return t;
 }
+const materiauxImages = new Map();
 function panneauImage(w, h, texture, opaque = true) {
-  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: texture, transparent: !opaque, toneMapped: false }));
+  const cle = `${texture.uuid}|${opaque}`;
+  if (!materiauxImages.has(cle)) materiauxImages.set(cle, new THREE.MeshBasicMaterial({ map: texture, transparent: !opaque, toneMapped: false }));
+  return new THREE.Mesh(geoPlan(w, h), materiauxImages.get(cle));
 }
 function placer_(g, m, x, y, z, a) { m.position.set(x, y, z); m.rotation.y = a; g.add(m); return m; }
 // Mur de marque : logo, signature
@@ -10565,7 +10601,7 @@ function accessoiresBureau(g, x, z) {
   const h = k => hasard(x * 3.1 + k, z * 1.7 - k, 11);
   if (h(1) < 0.4) {
     g.add(pos(boite(0.58, 0.34, 0.03, 0x111827), x - 0.62, 1.04, z - 0.16));
-    const e = new THREE.Mesh(new THREE.PlaneGeometry(0.54, 0.3), materiauAppli(APPLIS[Math.floor(h(2) * APPLIS.length)]));
+    const e = new THREE.Mesh(geoPlan(0.54, 0.3), materiauAppli(APPLIS[Math.floor(h(2) * APPLIS.length)]));
     g.add(pos(e, x - 0.62, 1.04, z - 0.143));
     g.add(pos(boite(0.05, 0.16, 0.05, 0x374151), x - 0.62, 0.86, z - 0.2));
   } else if (h(3) < 0.6) {
@@ -10994,7 +11030,7 @@ function majObjetsPortes(e) {
 /* ---------- L9. Installation dans les niveaux ---------- */
 function installerEntreprise() {
   const R1 = ETAGES[1].groupe, R0 = ETAGES[0].groupe, R2 = ETAGES[2].groupe;
-  const etage = (n, f) => { obstaclesConstruction = ETAGES[n].obstacles; const g = new THREE.Group(); f(g); ETAGES[n].groupe.add(g); obstaclesConstruction = obstacles; fusionnerDecor(g); return g; };
+  const etage = (n, f) => { obstaclesConstruction = ETAGES[n].obstacles; const g = new THREE.Group(); f(g); ETAGES[n].groupe.add(g); obstaclesConstruction = obstacles; fusionnerDecor(g); instancierRepetitions(g); return g; };
   etage(1, g => {
     faceNordNoyau(g);
     equiperPoteaux(g);
