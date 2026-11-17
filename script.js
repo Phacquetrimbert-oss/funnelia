@@ -1,17 +1,42 @@
 "use strict";
 
+/* Stockage local : toutes les clés de Funnelia commencent par « funnelia. ».
+   Les sauvegardes des versions précédentes (anciens noms du jeu) sont reprises
+   automatiquement au premier lancement ; les anciennes clés ne sont jamais
+   effacées, pour qu'aucune progression ne puisse être perdue. */
+const CLES_STOCKAGE = {
+  langue: "funnelia.langue",
+  parcours: "funnelia.parcours",
+  ongletAccueil: "funnelia.onglet-accueil",
+  demarre: "funnelia.demarre"                // sessionStorage : retour direct à l'accueil après un changement de langue
+};
+const ANCIENNES_CLES = {
+  [CLES_STOCKAGE.langue]: ["for-distribution-langue"],
+  [CLES_STOCKAGE.parcours]: ["veltis-academy-parcours-client"],
+  [CLES_STOCKAGE.ongletAccueil]: ["for-distribution-onglet"]
+};
+(function migrerStockage() {
+  try {
+    Object.entries(ANCIENNES_CLES).forEach(([nouvelle, anciennes]) => {
+      if (localStorage.getItem(nouvelle) !== null) return;
+      const ancienne = anciennes.find(k => localStorage.getItem(k) !== null);
+      if (ancienne) localStorage.setItem(nouvelle, localStorage.getItem(ancienne));
+    });
+  } catch (e) { /* stockage indisponible (navigation privée) : rien à migrer */ }
+})();
+
 /* Langue de l'interface (français ou anglais), choisie avant de lancer le jeu.
    Elle est fixée au chargement : changer de langue recharge la page. */
-const CLE_LANGUE = "for-distribution-langue";
+const CLE_LANGUE = CLES_STOCKAGE.langue;
 const LANGUE = (() => { try { return localStorage.getItem(CLE_LANGUE) === "en" ? "en" : "fr"; } catch (e) { return "fr"; } })();
 const EN = LANGUE === "en";
 const LOCALE = EN ? "en-GB" : "fr-FR";
 document.documentElement.lang = LANGUE;
 function traduireHTML() {
   if (!EN) return;
-  document.title = "Conversio – From prospect to customer";
+  document.title = "Funnelia – From prospect to customer";
   const meta = document.querySelector('meta[name="description"]');
-  if (meta) meta.content = "Conversio: a 3D B2B sales conversion simulator, in English and French. Move every contact through the funnel, from prospect to lead, opportunity and loyal customer, with team KPI dashboards.";
+  if (meta) meta.content = "Funnelia: a 3D B2B sales conversion simulator, in English and French. Move every contact through the funnel, from prospect to lead, opportunity and loyal customer, with team KPI dashboards.";
   document.querySelectorAll("[data-en]").forEach(el => { el.innerHTML = el.dataset.en; });
   [["data-en-title", "title"], ["data-en-placeholder", "placeholder"], ["data-en-aria-label", "aria-label"]].forEach(([source, cible]) =>
     document.querySelectorAll(`[${source}]`).forEach(el => el.setAttribute(cible, el.getAttribute(source))));
@@ -19,7 +44,7 @@ function traduireHTML() {
 traduireHTML();
 
 /* =====================================================================
-   CONVERSIO · Du prospect au client (FR / EN)
+   FUNNELIA · Du prospect au client (FR / EN)
    Simulateur 3D de conversion commerciale B2B
    ---------------------------------------------------------------------
    Univers : Veltis, éditeur du logiciel SaaS « Veltis One » (gestion
@@ -160,7 +185,9 @@ const jeu = {
   posture: 0, postureDepart: 0, reflexesRequin: [], gestesPartenaire: 0
 };
 
-const CLE_SAUVEGARDE = "veltis-academy-parcours-client";
+const CLE_SAUVEGARDE = CLES_STOCKAGE.parcours;
+// Logo Funnelia : entonnoir en 4 bandes, une par étape du tunnel (Prospect, Lead, Opportunité, Client)
+const LOGO_FUNNELIA = '<svg viewBox="0 0 48 48" role="img"><rect width="48" height="48" rx="11" fill="#0b1f3a"/><path d="M8 10h32l-3.2 6.5H11.2z" fill="#94a3b8"/><path d="M12.4 18.5h23.2l-3.2 6.5H15.6z" fill="#3b82f6"/><path d="M16.8 27h14.4l-3.2 6.5h-8z" fill="#8b5cf6"/><path d="M21 35.5h6l-1.2 4.5h-3.6z" fill="#22c55e"/></svg>';
 function chargerResultats() {
   const vide = () => Array(NB_ETAPES).fill(0);
   const base = {
@@ -195,7 +222,7 @@ function sauverResultats() {
 const resultats = chargerResultats();
 const estTerrain = () => jeu.profil === "terrain";
 
-/* ---------- A3. Plan de l'étage : Veltis, 32e étage d'une tour de La Défense ----------
+/* ---------- A3. Plan du R+1 (plateau commercial) de l'immeuble Veltis, 3 niveaux sur l'esplanade de La Défense ----------
    Tout le jeu se déroule dans les bureaux de Veltis : open space commercial,
    bureaux de direction, salons clients (les rendez-vous en face à face y sont
    reçus), forum événementiel, cafétéria, espace détente, accueil et
@@ -6948,7 +6975,7 @@ function exporterCSV() {
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
   const lien = document.createElement("a");
   lien.href = URL.createObjectURL(blob);
-  lien.download = `for-distribution-${EN ? "results" : "resultats"}-${new Date().toISOString().slice(0, 10)}.csv`;
+  lien.download = `funnelia-${EN ? "results" : "resultats"}-${new Date().toISOString().slice(0, 10)}.csv`;
   document.body.appendChild(lien);
   lien.click();
   lien.remove();
@@ -7461,7 +7488,7 @@ function choisirLangue(langue) {
   if (langue !== LANGUE && jeu.def && jeu.mode !== "bilan" && !confirm(T("Changer de langue recharge le jeu et interrompt la mission en cours. Continuer ?", "Changing language reloads the game and ends the current mission. Continue?"))) { majBoutonsLangue(); return; }
   try { localStorage.setItem(CLE_LANGUE, langue); } catch (e) { /* stockage indisponible */ }
   if (langue !== LANGUE) {
-    try { sessionStorage.setItem("for-distribution-demarre", "1"); } catch (e) { /* ignoré */ }
+    try { sessionStorage.setItem(CLES_STOCKAGE.demarre, "1"); } catch (e) { /* ignoré */ }
     location.reload();
   } else majBoutonsLangue();
 }
@@ -7582,7 +7609,7 @@ function ouvrirAide() {
       <li>${T("Jauge du tunnel : Prospect → Lead → Opportunité → Client. Chaque passage d'étape est animé ; elle fixe aussi la durée de vie projetée de vos clients.", "Funnel gauge: Prospect → Lead → Opportunity → Customer. Every stage change is animated; it also sets your customers' projected lifetime.")}</li>
       <li>${T("Chaque contact qui passe d'une étape à la suivante pendant une mission (prospect → lead → opportunité → client) est signalé par une animation.", "Every contact moving from one stage to the next during a mission (prospect → lead → opportunity → customer) is highlighted by an animation.")}</li>
     </ul>`;
-  ouvrirFenetre({ titre: T("Aide et commandes", "Help and controls"), sousTitre: "Conversio", corps, large: true, navigation: "document", boutons: [{ label: T("Fermer", "Close"), classe: "btn-principal", action: fermerFenetre }] });
+  ouvrirFenetre({ titre: T("Aide et commandes", "Help and controls"), sousTitre: "Funnelia", corps, large: true, navigation: "document", boutons: [{ label: T("Fermer", "Close"), classe: "btn-principal", action: fermerFenetre }] });
 }
 
 /* ---------- G4. Notifications empilées ---------- */
@@ -7635,10 +7662,10 @@ function afficherHero() {
     c.dataset.reco = T("Recommandée", "Recommended");
   });
 }
-let ongletAccueil = (() => { try { return localStorage.getItem("for-distribution-onglet") || "progression"; } catch (e) { return "progression"; } })();
+let ongletAccueil = (() => { try { return localStorage.getItem(CLES_STOCKAGE.ongletAccueil) || "progression"; } catch (e) { return "progression"; } })();
 function afficherOngletAccueil(nom) {
   ongletAccueil = nom;
-  try { localStorage.setItem("for-distribution-onglet", nom); } catch (e) { /* ignoré */ }
+  try { localStorage.setItem(CLES_STOCKAGE.ongletAccueil, nom); } catch (e) { /* ignoré */ }
   document.querySelectorAll("[data-onglet-accueil]").forEach(b => {
     const actif = b.dataset.ongletAccueil === nom;
     b.classList.toggle("actif", actif);
@@ -7712,7 +7739,7 @@ function ouvrirCertificat() {
   const nb = portefeuille();
   const corps = `
     <div class="certificat">
-      <div class="marque"><span class="marque-logo" aria-hidden="true"><span>P</span><span>C</span></span><div><p class="marque-nom">Conversio</p><p class="marque-devise">${T("Simulateur de conversion commerciale", "Sales conversion simulator")}</p></div></div>
+      <div class="marque"><span class="marque-logo" aria-hidden="true">${LOGO_FUNNELIA}</span><div><p class="marque-nom">Funnelia</p><p class="marque-devise">${T("Simulateur de conversion commerciale", "Sales conversion simulator")}</p></div></div>
       <p class="certificat-titre">${T("Certificat de parcours", "Certificate of completion")}</p>
       <p class="certificat-nom">${echapper(resultats.nom || T("Participant", "Participant"))}</p>
       <p class="certificat-texte">${T("a parcouru l'ensemble du tunnel de conversion, de l'inconnu au client signé, en profil", "has completed the whole conversion funnel, from stranger to signed customer, as a")} <strong>${PROFILS[profil].nom}</strong> (${libelleExigence()}).</p>
@@ -7726,7 +7753,7 @@ function ouvrirCertificat() {
       <p class="certificat-date">${T("Délivré le", "Issued on")} ${new Date().toLocaleDateString(LOCALE, { day: "2-digit", month: "long", year: "numeric" })}</p>
     </div>`;
   ouvrirFenetre({
-    titre: T("Certificat Conversio", "Conversio certificate"), sousTitre: T("À imprimer ou à enregistrer en PDF", "Print it or save it as a PDF"), corps, large: true, navigation: "document",
+    titre: T("Certificat Funnelia", "Funnelia certificate"), sousTitre: T("À imprimer ou à enregistrer en PDF", "Print it or save it as a PDF"), corps, large: true, navigation: "document",
     boutons: [{ label: T("Imprimer", "Print"), action: () => { document.body.classList.add("impression-certificat"); window.print(); document.body.classList.remove("impression-certificat"); } }, { label: T("Fermer", "Close"), classe: "btn-principal", action: fermerFenetre }]
   });
 }
@@ -11155,7 +11182,13 @@ document.addEventListener("keydown", e => {
 /* =====================================================================
    INITIALISATION
    ===================================================================== */
+// Les enseignes et écrans 3D sont dessinés avec la police Inter : on attend qu'elle soit prête (2 s maximum)
+function policePrete() {
+  if (!document.fonts || !document.fonts.load) return Promise.resolve();
+  return Promise.race([Promise.all([document.fonts.load("400 16px Inter"), document.fonts.load("800 16px Inter")]), new Promise(r => setTimeout(r, 2000))]).catch(() => {});
+}
 async function initialiser() {
+  await policePrete();
   await etapeChargement(T("Préparation des matériaux…", "Preparing materials…"), 0.08, preparerTextures);
   await etapeChargement(T("Construction de l'immeuble…", "Building the offices…"), 0.25, construireDecor);
   await etapeChargement(T("Calcul des déplacements…", "Computing walking paths…"), 0.5, construireNavigations);
@@ -11168,7 +11201,7 @@ async function initialiser() {
   preparerBoussole();
   // Après un changement de langue, on revient directement à l'accueil
   let direct = false;
-  try { direct = sessionStorage.getItem("for-distribution-demarre") === "1"; sessionStorage.removeItem("for-distribution-demarre"); } catch (e) { /* ignoré */ }
+  try { direct = sessionStorage.getItem(CLES_STOCKAGE.demarre) === "1"; sessionStorage.removeItem(CLES_STOCKAGE.demarre); } catch (e) { /* ignoré */ }
   if (direct) afficherAccueil(); else afficherDemarrage();
   boucle();
   $("chargement-barre").style.width = "100%";
