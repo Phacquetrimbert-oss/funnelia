@@ -7648,6 +7648,7 @@ function boucle() {
   majPortesAscenseurs(dt);
   majPortiques(dt);
   majPassants(dt);
+  majPersonnagesGltf(dt);
   majLieu(dt);
   majDestination();
   animerVisagesCollaborateurs(dt);
@@ -8252,6 +8253,7 @@ function appliquerMatieres() {
   materiauVerre.envMapIntensity = 1.3;
   materiauPersonnage.envMapIntensity = 0.5;
   materiauPersonnage.needsUpdate = true;
+  if (materiauGltf) { materiauGltf.envMapIntensity = 0.5; materiauGltf.needsUpdate = true; }
   materiauxDecor.forEach(m => { m.envMapIntensity = 0.5; m.needsUpdate = true; });
 }
 
@@ -8700,7 +8702,7 @@ async function etapeChargement(texte, part, action) {
   $("chargement-barre").style.width = `${Math.round(part * 100)}%`;
   await prochaineImage();
   await prochaineImage();
-  action();
+  await action();
 }
 
 /* =====================================================================
@@ -11436,6 +11438,126 @@ document.addEventListener("keydown", e => {
 }, true);
 
 /* =====================================================================
+   PARTIE N — PERSONNAGES glTF (LOT 3)
+   ---------------------------------------------------------------------
+   Modèles riggés CC0 (voir CREDITS.md), embarqués en base64 dans
+   assets/personnages/*.js : chargés par <script>, donc compatibles file://.
+   Au chargement, les morceaux de couleur du modèle sont fusionnés en un
+   seul maillage (1 draw call) ; la couleur est portée par les sommets.
+   ===================================================================== */
+const modelesGltf = {};
+const personnagesGltf = [];
+const HAUTEUR_GLTF = 1.74;
+let materiauGltf = null;
+
+function base64VersTampon(texte) {
+  const brut = atob(texte), octets = new Uint8Array(brut.length);
+  for (let i = 0; i < brut.length; i++) octets[i] = brut.charCodeAt(i);
+  return octets.buffer;
+}
+// Décode un modèle embarqué ; en cas d'absence ou d'erreur, le jeu continue sans lui
+function chargerModele(nom) {
+  const donnees = window.MODELES_FUNNELIA && window.MODELES_FUNNELIA[nom];
+  if (!donnees || !THREE.GLTFLoader) return Promise.resolve(null);
+  return new Promise(resolve => {
+    new THREE.GLTFLoader().parse(base64VersTampon(donnees), "", gltf => {
+      modelesGltf[nom] = preparerModele(gltf);
+      resolve(modelesGltf[nom]);
+    }, erreur => { console.warn("Modèle " + nom + " illisible", erreur); resolve(null); });
+  });
+}
+// Fusionne les primitives (une par matériau) en un seul maillage à couleurs par sommet
+function preparerModele(gltf) {
+  const morceaux = [];
+  gltf.scene.traverse(o => { if (o.isSkinnedMesh) morceaux.push(o); });
+  const attributs = ["position", "normal", "skinIndex", "skinWeight"];
+  const tableaux = { position: [], normal: [], skinIndex: [], skinWeight: [], color: [] }, index = [], zones = [];
+  let decalage = 0;
+  morceaux.forEach(m => {
+    const g = m.geometry, n = g.attributes.position.count;
+    attributs.forEach(a => { for (let i = 0; i < n * g.attributes[a].itemSize; i++) tableaux[a].push(g.attributes[a].array[i]); });
+    const c = m.material.color.clone().convertLinearToSRGB();
+    zones.push({ nom: m.material.name, debut: decalage, nombre: n, couleur: c });
+    for (let i = 0; i < n; i++) tableaux.color.push(c.r, c.g, c.b);
+    const idx = g.index ? g.index.array : [...Array(n).keys()];
+    for (let i = 0; i < idx.length; i++) index.push(idx[i] + decalage);
+    decalage += n;
+  });
+  const geo = new THREE.BufferGeometry();
+  geo.setAttribute("position", new THREE.Float32BufferAttribute(tableaux.position, 3));
+  geo.setAttribute("normal", new THREE.Float32BufferAttribute(tableaux.normal, 3));
+  geo.setAttribute("skinIndex", new THREE.Uint16BufferAttribute(tableaux.skinIndex, 4));
+  geo.setAttribute("skinWeight", new THREE.Float32BufferAttribute(tableaux.skinWeight, 4));
+  geo.setAttribute("color", new THREE.Float32BufferAttribute(tableaux.color, 3));
+  geo.setIndex(index);
+  geo.computeBoundingSphere();
+  if (!materiauGltf) materiauGltf = new THREE.MeshStandardMaterial({ vertexColors: true, skinning: true, roughness: 0.72, metalness: 0 });
+  // Le premier morceau garde le squelette et reçoit tout ; les autres disparaissent
+  const principal = morceaux[0];
+  principal.geometry = geo;
+  principal.material = materiauGltf;
+  morceaux.slice(1).forEach(m => m.parent.remove(m));
+  // Mise à l'échelle : le modèle mesure HAUTEUR_GLTF mètres
+  gltf.scene.updateMatrixWorld(true);
+  const boite = new THREE.Box3().setFromObject(gltf.scene);
+  const echelle = HAUTEUR_GLTF / (boite.max.y - boite.min.y);
+  return { scene: gltf.scene, animations: gltf.animations, geometrie: geo, zones, echelle, variantes: {} };
+}
+// Géométrie recolorée (partagée entre personnages de même tenue) : { Shirt: "#1f2937", Skin: ... }
+function geometrieTenue(modele, couleurs) {
+  const cle = JSON.stringify(couleurs || {});
+  if (modele.variantes[cle]) return modele.variantes[cle];
+  const geo = modele.geometrie.clone(), tab = geo.attributes.color.array;
+  modele.zones.forEach(z => {
+    if (!couleurs || !couleurs[z.nom]) return;
+    const c = new THREE.Color(couleurs[z.nom]);
+    for (let i = z.debut; i < z.debut + z.nombre; i++) { tab[i * 3] = c.r; tab[i * 3 + 1] = c.g; tab[i * 3 + 2] = c.b; }
+  });
+  modele.variantes[cle] = geo;
+  return geo;
+}
+// Crée un personnage animé (squelette propre, géométrie et matériau partagés)
+function creerPersonnageGltf(nom, { couleurs = null, animation = "Idle", etage = 0 } = {}) {
+  const modele = modelesGltf[nom];
+  if (!modele) return null;
+  const racine = THREE.SkeletonUtils.clone(modele.scene);
+  racine.scale.multiplyScalar(modele.echelle);
+  racine.traverse(o => {
+    if (o.isSkinnedMesh) { o.geometry = geometrieTenue(modele, couleurs); o.castShadow = false; o.receiveShadow = true; o.frustumCulled = false; }
+  });
+  const groupe = new THREE.Group();
+  groupe.add(racine);
+  const mixer = new THREE.AnimationMixer(racine);
+  const actions = {};
+  modele.animations.forEach(clip => { actions[clip.name] = mixer.clipAction(clip); });
+  const perso = { objet: groupe, mixer, actions, etage, courante: null };
+  jouerAnimation(perso, animation, 0);
+  // Départ décalé : deux personnages voisins ne bougent pas en même temps
+  mixer.update(Math.random() * 3);
+  personnagesGltf.push(perso);
+  return perso;
+}
+function jouerAnimation(perso, nom, fondu = 0.3) {
+  const suivante = perso.actions[nom];
+  if (!suivante || perso.courante === suivante) return;
+  suivante.reset().play();
+  if (perso.courante) perso.courante.crossFadeTo(suivante, fondu, false);
+  perso.courante = suivante;
+}
+// Animations : uniquement pour l'étage affiché
+function majPersonnagesGltf(dt) {
+  personnagesGltf.forEach(p => { if (ETAGES[p.etage].groupe.visible) p.mixer.update(dt); });
+}
+// Personnage de test (lot 3, étape 1) : un collaborateur en costume dans le hall, près de l'accueil
+function installerPersonnageTest() {
+  const p = creerPersonnageGltf("homme-costume", { animation: "Idle", etage: 0, couleurs: { Shirt: "#1e293b", Pants: "#1e293b", TieTexture: "#e8ecf1", Skin: "#c58c62", Hair: "#3b2a20", Eyes: "#1f1a17" } });
+  if (!p) return;
+  p.objet.position.set(8.2, 0, 7.4);
+  p.objet.rotation.y = 0.5;
+  ETAGES[0].groupe.add(p.objet);
+}
+
+/* =====================================================================
    INITIALISATION
    ===================================================================== */
 // Les enseignes et écrans 3D sont dessinés avec la police Inter : on attend qu'elle soit prête (2 s maximum)
@@ -11448,7 +11570,8 @@ async function initialiser() {
   await etapeChargement(T("Préparation des matériaux…", "Preparing materials…"), 0.08, preparerTextures);
   await etapeChargement(T("Construction de l'immeuble…", "Building the offices…"), 0.25, construireDecor);
   await etapeChargement(T("Calcul des déplacements…", "Computing walking paths…"), 0.5, construireNavigations);
-  await etapeChargement(T("Arrivée des collaborateurs…", "Colleagues arriving…"), 0.62, () => { creerCollaborateurs(); creerFigurants(); construirePassants(); ajouterObjetsImmeuble(); installerEntreprise(); majEcransDynamiques(); changerEtage(1); });
+  await etapeChargement(T("Arrivée des collaborateurs…", "Colleagues arriving…"), 0.58, () => chargerModele("homme-costume"));
+  await etapeChargement(T("Arrivée des collaborateurs…", "Colleagues arriving…"), 0.62, () => { installerPersonnageTest(); creerCollaborateurs(); creerFigurants(); construirePassants(); ajouterObjetsImmeuble(); installerEntreprise(); majEcransDynamiques(); changerEtage(1); });
   await etapeChargement(T("Réglage des matières…", "Tuning materials…"), 0.72, appliquerMatieres);
   await etapeChargement(T("Calcul des reflets…", "Computing reflections…"), 0.84, genererReflets);
   await etapeChargement(T("Réglage de l'image…", "Tuning the picture…"), 0.95, configurerRendu);
