@@ -7372,6 +7372,8 @@ function boucle() {
   requestAnimationFrame(boucle);
   const dt = Math.min(0.05, horloge.getDelta());
   jeu.temps += dt;
+  debugDebutImage();
+  if (bancTest.actif) { executerBanc(); debugFinImage(); return; }
 
   if (jeu.mode === "jeu" && jeu.def) {
     jeu.dureeReelle += dt;
@@ -7427,6 +7429,7 @@ function boucle() {
   majMinimap();
   rendre();
   majInterfaceJeu(dt);
+  debugFinImage();
 }
 
 /* Poste de travail : balise pour les profils sédentaires */
@@ -10977,6 +10980,177 @@ function filHTML() {
   if (!fil.length) return "";
   return `<h4>${T("Fil de l'entreprise", "Company feed")}</h4><ul class="fil-liste">${fil.map(f => `<li><span class="fil-avatar" style="background:${f.couleur}">${echapper(initiales(f.auteur))}</span><span><strong>${echapper(f.auteur)}</strong> <time>${echapper(f.heure)}</time><br>${echapper(f.texte)}</span></li>`).join("")}</ul>`;
 }
+
+/* =====================================================================
+   PARTIE M — OUTIL DE MESURE DES PERFORMANCES (DEBUG)
+   ---------------------------------------------------------------------
+   F3        : affiche / masque le panneau (masqué par défaut).
+   Maj + F3  : banc de test automatique, chaque qualité × chaque étage.
+   Les compteurs de rendu (renderer.info) sont cumulés sur TOUTES les
+   passes du composeur : remise à zéro manuelle une fois par image.
+   ===================================================================== */
+renderer.info.autoReset = false;
+const debugPerf = { visible: false, el: null, images: 0, temps: 0, cpu: 0, derniere: performance.now(), debutCpu: 0, maj: 0, scene: null, sceneMaj: 0, rendu: null };
+
+// Comptages de la scène : objets réellement affichables (groupes masqués exclus)
+function compterScene() {
+  const r = { meshes: 0, triangles: 0, ombres: 0, geometries: new Set(), materiaux: new Set(), geometriesTotal: new Set(), materiauxTotal: new Set(), meshesTotal: 0 };
+  const triangles = m => {
+    const g = m.geometry;
+    if (!g || !g.attributes || !g.attributes.position) return 0;
+    const n = (g.index ? g.index.count : g.attributes.position.count) / 3;
+    return n * (m.isInstancedMesh ? m.count : 1);
+  };
+  scene.traverse(o => {
+    if (!o.isMesh) return;
+    r.meshesTotal++;
+    r.geometriesTotal.add(o.geometry.uuid);
+    [].concat(o.material).forEach(m => r.materiauxTotal.add(m.uuid));
+  });
+  scene.traverseVisible(o => {
+    if (!o.isMesh) return;
+    r.meshes++;
+    r.triangles += triangles(o);
+    if (o.castShadow) r.ombres++;
+    r.geometries.add(o.geometry.uuid);
+    [].concat(o.material).forEach(m => r.materiaux.add(m.uuid));
+  });
+  return { meshes: r.meshes, triangles: Math.round(r.triangles), ombres: r.ombres, geometries: r.geometries.size, materiaux: r.materiaux.size,
+    meshesTotal: r.meshesTotal, geometriesTotal: r.geometriesTotal.size, materiauxTotal: r.materiauxTotal.size };
+}
+// Compteurs de rendu de l'image courante (toutes passes confondues)
+const releveRendu = () => ({
+  appels: renderer.info.render.calls, triangles: renderer.info.render.triangles,
+  geometries: renderer.info.memory.geometries, textures: renderer.info.memory.textures, programmes: (renderer.info.programs || []).length
+});
+// Appelé au début et à la fin de chaque image par la boucle principale
+function debugDebutImage() {
+  renderer.info.reset();
+  debugPerf.debutCpu = performance.now();
+}
+function debugFinImage() {
+  const maintenant = performance.now();
+  debugPerf.cpu += maintenant - debugPerf.debutCpu;
+  debugPerf.temps += maintenant - debugPerf.derniere;
+  debugPerf.derniere = maintenant;
+  debugPerf.images++;
+  debugPerf.rendu = releveRendu();
+  if (!debugPerf.visible || bancTest.actif) return;
+  if (maintenant - debugPerf.maj < 250) return;
+  debugPerf.maj = maintenant;
+  if (maintenant - debugPerf.sceneMaj > 1000 || !debugPerf.scene) { debugPerf.scene = compterScene(); debugPerf.sceneMaj = maintenant; }
+  const fps = debugPerf.images / (debugPerf.temps / 1000), ms = debugPerf.temps / debugPerf.images, cpu = debugPerf.cpu / debugPerf.images;
+  debugPerf.images = 0; debugPerf.temps = 0; debugPerf.cpu = 0;
+  afficherPanneauDebug(fps, ms, cpu);
+}
+const fmt = v => Math.round(v).toLocaleString("fr-FR");
+function afficherPanneauDebug(fps, ms, cpu) {
+  const r = debugPerf.rendu, s = debugPerf.scene;
+  debugPerf.el.querySelector(".dbg-direct").innerHTML = `
+    <tr><th>FPS</th><td class="${fps < 30 ? "dbg-mauvais" : fps < 50 ? "dbg-moyen" : "dbg-bon"}">${fps.toFixed(1)}</td></tr>
+    <tr><th>ms / image</th><td>${ms.toFixed(1)}</td></tr>
+    <tr><th>ms CPU (boucle)</th><td>${cpu.toFixed(1)}</td></tr>
+    <tr><th>Qualité · étage</th><td>${rendu.qualite} · ${ETAGES[joueur.etage].code}${rendu.ssao ? " · SSAO" : ""}</td></tr>
+    <tr class="dbg-sep"><th>Draw calls (toutes passes)</th><td>${fmt(r.appels)}</td></tr>
+    <tr><th>Triangles (toutes passes)</th><td>${fmt(r.triangles)}</td></tr>
+    <tr><th>Géométries en mémoire</th><td>${fmt(r.geometries)}</td></tr>
+    <tr><th>Textures en mémoire</th><td>${fmt(r.textures)}</td></tr>
+    <tr><th>Programmes (shaders)</th><td>${fmt(r.programmes)}</td></tr>
+    <tr class="dbg-sep"><th>Meshes visibles</th><td>${fmt(s.meshes)} <small>/ ${fmt(s.meshesTotal)}</small></td></tr>
+    <tr><th>Triangles visibles</th><td>${fmt(s.triangles)}</td></tr>
+    <tr><th>Meshes castShadow</th><td>${fmt(s.ombres)}</td></tr>
+    <tr><th>Géométries uniques</th><td>${fmt(s.geometries)} <small>/ ${fmt(s.geometriesTotal)}</small></td></tr>
+    <tr><th>Matériaux uniques</th><td>${fmt(s.materiaux)} <small>/ ${fmt(s.materiauxTotal)}</small></td></tr>`;
+}
+function basculerPanneauDebug(force) {
+  debugPerf.visible = force ?? !debugPerf.visible;
+  if (!debugPerf.el) {
+    const el = document.createElement("div");
+    el.id = "debug-perf";
+    el.className = "debug-perf";
+    el.innerHTML = `<div class="dbg-titre">Mesures · F3 masquer · Maj+F3 banc de test</div><table class="dbg-direct"></table><div class="dbg-banc"></div>`;
+    document.body.appendChild(el);
+    debugPerf.el = el;
+  }
+  debugPerf.el.classList.toggle("cache", !debugPerf.visible);
+  debugPerf.images = 0; debugPerf.temps = 0; debugPerf.cpu = 0; debugPerf.maj = 0; debugPerf.sceneMaj = 0;
+}
+
+/* Banc de test : chaque qualité × chaque étage, caméra en rotation lente au centre de l'étage */
+const bancTest = { actif: false, file: [], i: -1, t: 0, acc: null, resultats: [], etat: null, derniere: 0 };
+const DUREE_BANC = { chauffe: 0.8, mesure: 2.5 };
+function lancerBanc() {
+  if (bancTest.actif) return;
+  basculerPanneauDebug(true);
+  bancTest.etat = { qualite: reglages().graphismes, etage: joueur.etage };
+  bancTest.file = [];
+  ["faible", "moyen", "eleve", "ultra"].forEach(q => [0, 1, 2].forEach(n => bancTest.file.push({ q, n })));
+  bancTest.resultats = [];
+  bancTest.i = -1;
+  bancTest.actif = true;
+  debugPerf.el.querySelector(".dbg-banc").innerHTML = `<p>Banc en cours… (${bancTest.file.length} configurations, environ ${Math.round(bancTest.file.length * (DUREE_BANC.chauffe + DUREE_BANC.mesure))} s)</p>`;
+  bancSuivant();
+}
+function bancSuivant() {
+  bancTest.i++;
+  if (bancTest.i >= bancTest.file.length) { finirBanc(); return; }
+  const { q, n } = bancTest.file[bancTest.i];
+  reglages().graphismes = q;
+  configurerRendu();
+  afficherNiveau(n);
+  bancTest.t = 0;
+  bancTest.derniere = performance.now();
+  bancTest.acc = { images: 0, temps: 0, cpu: 0, appels: 0, triangles: 0 };
+}
+// Remplace la boucle de jeu pendant le banc : uniquement caméra + rendu
+function executerBanc() {
+  const maintenant = performance.now();
+  const dt = (maintenant - bancTest.derniere) / 1000;
+  bancTest.derniere = maintenant;
+  bancTest.t += dt;
+  const c = bancTest.file[bancTest.i];
+  const angle = bancTest.t / DUREE_BANC.mesure * Math.PI * 2;
+  camera.position.set(0.5, ETAGES[c.n].y + HAUTEUR_YEUX, 1.5);
+  camera.lookAt(camera.position.x + Math.sin(angle), camera.position.y - 0.05, camera.position.z + Math.cos(angle));
+  const debut = performance.now();
+  renderer.info.reset();
+  rendre();
+  const cpu = performance.now() - debut;
+  if (bancTest.t > DUREE_BANC.chauffe) {
+    const a = bancTest.acc;
+    a.images++; a.temps += dt; a.cpu += cpu;
+    a.appels += renderer.info.render.calls; a.triangles += renderer.info.render.triangles;
+  }
+  if (bancTest.t > DUREE_BANC.chauffe + DUREE_BANC.mesure) {
+    const a = bancTest.acc, r = releveRendu(), s = compterScene();
+    bancTest.resultats.push({
+      qualite: c.q, etage: ETAGES[c.n].code, ssao: !!rendu.ssao, fps: a.images / a.temps, ms: a.temps / a.images * 1000, cpuRendu: a.cpu / a.images,
+      appels: a.appels / a.images, triangles: a.triangles / a.images, geometriesMemoire: r.geometries, textures: r.textures, programmes: r.programmes,
+      meshes: s.meshes, trianglesScene: s.triangles, ombres: s.ombres, geometries: s.geometries, materiaux: s.materiaux
+    });
+    bancSuivant();
+  }
+}
+function finirBanc() {
+  bancTest.actif = false;
+  if (bancTest.etat.qualite === undefined) delete reglages().graphismes; else reglages().graphismes = bancTest.etat.qualite;
+  configurerRendu();
+  afficherNiveau(joueur.etage);
+  window.mesuresBanc = bancTest.resultats;
+  const lignes = bancTest.resultats.map(m => `| ${m.qualite}${m.ssao ? " (SSAO)" : ""} | ${m.etage} | ${m.fps.toFixed(1)} | ${m.ms.toFixed(1)} | ${Math.round(m.appels)} | ${fmt(m.triangles)} | ${m.meshes} | ${fmt(m.trianglesScene)} | ${m.ombres} | ${m.geometries} | ${m.materiaux} | ${m.textures} | ${m.programmes} |`);
+  const tableau = ["| Qualité | Étage | FPS | ms/image | Draw calls | Triangles rendus | Meshes visibles | Triangles visibles | castShadow | Géométries uniques | Matériaux uniques | Textures | Programmes |",
+    "|---|---|---|---|---|---|---|---|---|---|---|---|---|"].concat(lignes).join("\n");
+  console.table(bancTest.resultats);
+  debugPerf.el.querySelector(".dbg-banc").innerHTML = `<p>Banc terminé · ${navigator.userAgent.match(/(Chrome|Firefox|Safari)\/[\d.]+/)?.[0] || ""} · ${window.innerWidth}×${window.innerHeight} · pixel ratio ${window.devicePixelRatio}</p>
+    <p>Tableau à copier (Markdown) :</p><textarea readonly rows="8">${tableau}</textarea>`;
+}
+document.addEventListener("keydown", e => {
+  if (e.key !== "F3") return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (e.repeat) return;
+  if (e.shiftKey) lancerBanc(); else basculerPanneauDebug();
+}, true);
 
 /* =====================================================================
    INITIALISATION

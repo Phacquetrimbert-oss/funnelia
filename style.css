@@ -1262,3 +1262,16 @@ body.sans-animation .anim-etape *, body.sans-animation .anim-conversion *, body.
 body.mode-dialogue .fil, body.mode-ascenseur .fil { opacity: 0.25; }
 @keyframes filEntree { from { opacity: 0; transform: translateX(-12px); } to { opacity: 1; transform: none; } }
 @media (max-width: 760px) { .fil { display: none; } }
+
+/* Panneau de mesure des performances (F3) */
+.debug-perf { position: fixed; top: 64px; right: 14px; z-index: 60; width: 340px; max-height: calc(100vh - 80px); overflow: auto; padding: 10px 12px; border-radius: 8px;
+  background: rgba(10, 14, 22, 0.88); color: #e2e8f0; font: 12px/1.45 ui-monospace, "SF Mono", Menlo, Consolas, monospace; pointer-events: auto; }
+.dbg-titre { font-weight: 700; color: #fdba74; margin-bottom: 6px; }
+.debug-perf table { width: 100%; border-collapse: collapse; }
+.debug-perf th { text-align: left; font-weight: 400; color: #94a3b8; padding: 1px 0; }
+.debug-perf td { text-align: right; font-variant-numeric: tabular-nums; }
+.debug-perf small { color: #64748b; }
+.dbg-sep th, .dbg-sep td { padding-top: 6px; border-top: 1px solid rgba(148, 163, 184, 0.25); }
+.dbg-bon { color: #4ade80; } .dbg-moyen { color: #facc15; } .dbg-mauvais { color: #f87171; }
+.dbg-banc p { margin: 8px 0 4px; }
+.dbg-banc textarea { width: 100%; font: 11px/1.3 ui-monospace, Menlo, monospace; background: #0b0f17; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; }
