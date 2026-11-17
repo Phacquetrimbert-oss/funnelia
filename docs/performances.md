@@ -99,3 +99,32 @@ En Élevé, R+1 passe de 2 335 à 398 draw calls (÷ 5,9).
 Les personnages actuels restent assemblés à partir de nombreuses pièces (un objet par membre,
 plus cheveux, yeux, accessoires). Les remplacer au lot 3 par des personnages glTF de 1 à 3 objets ramène
 mécaniquement l'étage sous les 300 draw calls.
+
+## Mesure « après » lot 2 sur la machine du développeur (Safari, Maj + F3)
+
+| Qualité | Étage | FPS | ms/image | Draw calls | Triangles rendus | Matériaux uniques | Textures |
+|---|---|---|---|---|---|---|---|
+| faible | RDC | 60.0 | 16.7 | 357 | 187 729 | 120 | 63 |
+| faible | R+1 | 60.0 | 16.7 | 365 | 184 771 | 133 | 63 |
+| faible | R+2 | 44.1* | 22.7 | 366 | 175 964 | 116 | 66 |
+| moyen | RDC | 60.0 | 16.7 | 372 | 187 933 | 120 | 79 |
+| moyen | R+1 | 60.0 | 16.7 | 380 | 184 768 | 133 | 79 |
+| moyen | R+2 | 60.0 | 16.7 | 373 | 178 221 | 116 | 79 |
+| élevé | RDC | 59.2 | 16.9 | 373 | 188 336 | 120 | 79 |
+| élevé | R+1 | 59.1 | 16.9 | 379 | 183 519 | 133 | 79 |
+| élevé | R+2 | 60.0 | 16.7 | 373 | 178 238 | 116 | 79 |
+| ultra (SSAO) | RDC | 41.8 | 23.9 | 737 | 376 731 | 120 | 85 |
+| ultra (SSAO) | R+1 | 42.8 | 23.4 | 748 | 368 855 | 133 | 86 |
+| ultra (SSAO) | R+2 | 41.6 | 24.0 | 736 | 356 535 | 116 | 87 |
+
+\* Premier passage du banc à R+2 : chargement des textures de l'étage pendant la mesure
+(Moyen et Élevé, mesurés juste après au même étage, tiennent 60 FPS).
+
+| | Avant | Après lot 2 |
+|---|---|---|
+| Moyen | 58 – 60 FPS, 965 – 1 177 draw calls | **60 FPS** (plafond de l'écran), 372 – 380 draw calls |
+| Élevé | 43 – 46 FPS, 1 893 – 2 335 draw calls | **59 – 60 FPS**, 373 – 379 draw calls |
+| Ultra | 19 – 35 FPS | **42 – 43 FPS** |
+| Textures | 134 → 299 (fuite) | 63 – 87, stable |
+
+Cibles « 60 FPS en Moyen » et « ≥ 45 FPS en Élevé » : **atteintes** sur cette machine.
