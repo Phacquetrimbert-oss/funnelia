@@ -397,6 +397,12 @@ const materiauVerre = new THREE.MeshStandardMaterial({ color: 0xcfe0ee, roughnes
 
 /* ---------- A5. Textures de texte (enseignes, écrans) ---------- */
 function texteTexture(o) {
+  const c = dessinerTexte(o);
+  const t = new THREE.CanvasTexture(c);
+  t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+function dessinerTexte(o) {
   const L = o.largeur || 512, H = o.hauteur || 128;
   const c = document.createElement("canvas");
   c.width = L;
@@ -417,12 +423,48 @@ function texteTexture(o) {
     g.fillText(l.texte, x, y + l.taille * 0.1, L - 44);
     y += l.taille * 1.2;
   });
+  return c;
+}
+/* Atlas des panneaux de texte : enseignes, plaques et écrans fixes sont dessinés dans
+   quelques grandes textures partagées (2048 px). Tous les panneaux d'une même page
+   partagent un matériau et peuvent donc être fusionnés en un seul appel de dessin. */
+const TAILLE_ATLAS = 2048, MARGE_ATLAS = 4;
+const pagesAtlas = [];
+function placerDansPage(p, L, H) {
+  const l = L + MARGE_ATLAS * 2, h = H + MARGE_ATLAS * 2;
+  if (p.x + l > TAILLE_ATLAS) { p.x = 0; p.y += p.hLigne; p.hLigne = 0; }
+  if (p.y + h > TAILLE_ATLAS) return null;
+  const r = { page: p, x: p.x + MARGE_ATLAS, y: p.y + MARGE_ATLAS };
+  p.x += l;
+  p.hLigne = Math.max(p.hLigne, h);
+  return r;
+}
+function emplacementAtlas(L, H, transparent) {
+  if (L + MARGE_ATLAS * 2 > TAILLE_ATLAS || H + MARGE_ATLAS * 2 > TAILLE_ATLAS) return null;
+  for (const p of pagesAtlas) if (p.transparent === transparent) { const r = placerDansPage(p, L, H); if (r) return r; }
+  const c = document.createElement("canvas");
+  c.width = c.height = TAILLE_ATLAS;
   const t = new THREE.CanvasTexture(c);
   t.anisotropy = Math.min(8, renderer.capabilities.getMaxAnisotropy());
-  return t;
+  const materiau = new THREE.MeshBasicMaterial({ map: t, transparent, toneMapped: false });
+  materiau.userData.atlas = true;
+  const p = { c, g: c.getContext("2d"), t, transparent, materiau, x: 0, y: 0, hLigne: 0 };
+  pagesAtlas.push(p);
+  return placerDansPage(p, L, H);
 }
 function panneauTexte(w, h, o) {
-  return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: texteTexture(o), transparent: !o.fond, toneMapped: false }));
+  const toile = dessinerTexte(o);
+  const L = toile.width, H = toile.height;
+  const r = emplacementAtlas(L, H, !o.fond);
+  if (!r) return new THREE.Mesh(new THREE.PlaneGeometry(w, h), new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(toile), transparent: !o.fond, toneMapped: false }));
+  // Marge de la couleur du fond autour du panneau : pas de liseré aux distances moyennes (mipmaps)
+  if (o.fond) { r.page.g.fillStyle = o.fond; r.page.g.fillRect(r.x - MARGE_ATLAS, r.y - MARGE_ATLAS, L + MARGE_ATLAS * 2, H + MARGE_ATLAS * 2); }
+  r.page.g.drawImage(toile, r.x, r.y);
+  r.page.t.needsUpdate = true;
+  const geo = new THREE.PlaneGeometry(w, h);
+  const uv = geo.attributes.uv;
+  for (let i = 0; i < uv.count; i++) uv.setXY(i, (r.x + uv.getX(i) * L) / TAILLE_ATLAS, 1 - (r.y + (1 - uv.getY(i)) * H) / TAILLE_ATLAS);
+  return new THREE.Mesh(geo, r.page.materiau);
 }
 
 /* ---------- A6. Collisions ---------- */
@@ -483,11 +525,14 @@ function fusionnerGeometries(geos) {
   });
   const positions = new Float32Array(nbSommets * 3);
   const normales = new Float32Array(nbSommets * 3);
+  const avecUV = geos.every(g => g.attributes.uv);
+  const uvs = avecUV ? new Float32Array(nbSommets * 2) : null;
   const indices = new Uint32Array(nbIndices);
   let os = 0, oi = 0;
   geos.forEach(g => {
     positions.set(g.attributes.position.array, os * 3);
     normales.set(g.attributes.normal.array, os * 3);
+    if (avecUV) uvs.set(g.attributes.uv.array, os * 2);
     const n = g.attributes.position.count;
     if (g.index) {
       const ix = g.index.array;
@@ -502,6 +547,7 @@ function fusionnerGeometries(geos) {
   const sortie = new THREE.BufferGeometry();
   sortie.setAttribute("position", new THREE.BufferAttribute(positions, 3));
   sortie.setAttribute("normal", new THREE.BufferAttribute(normales, 3));
+  if (avecUV) sortie.setAttribute("uv", new THREE.BufferAttribute(uvs, 2));
   sortie.setIndex(new THREE.BufferAttribute(indices, 1));
   sortie.computeBoundingSphere();
   return sortie;
@@ -591,10 +637,19 @@ function instancierRepetitions(racine, minimum = 3) {
     inst.frustumCulled = false;             // r128 ne tient pas compte de la position des instances pour le culling
     inst.renderOrder = modele.renderOrder;
     racine.add(inst);
+    figer(inst);
     remplaces += liste.length;
   });
   return remplaces;
 }
+// Matériaux dont les objets peuvent être fusionnés sans changer le rendu
+function fusionnable(m) {
+  if (Array.isArray(m) || m.vertexColors) return false;
+  if (m.isMeshLambertMaterial || m.isMeshStandardMaterial) return !m.map && (!m.transparent || m.depthWrite === false);
+  if (m.isMeshBasicMaterial) return !m.map || !!m.userData.atlas;
+  return false;
+}
+function figer(o) { o.updateMatrix(); o.matrixAutoUpdate = false; }
 function fusionnerDecor(racine) {
   racine.updateMatrixWorld(true);
   // Géométries exprimées dans le repère de la racine (les niveaux sont décalés en hauteur)
@@ -602,10 +657,10 @@ function fusionnerDecor(racine) {
   const groupes = new Map();
   const aRetirer = [];
   racine.traverse(o => {
-    if (!o.isMesh || o.userData.dynamique) return;
+    if (!o.isMesh || o.isInstancedMesh || o.userData.dynamique) return;
     const m = o.material;
-    if (Array.isArray(m) || m.map || m.transparent || !(m.isMeshLambertMaterial || m.isMeshStandardMaterial)) return;
-    const cle = `${m.uuid}|${o.castShadow ? 1 : 0}`;
+    if (!fusionnable(m)) return;
+    const cle = `${m.uuid}|${o.castShadow ? 1 : 0}|${o.renderOrder}`;
     if (!groupes.has(cle)) groupes.set(cle, { materiau: m, ombre: o.castShadow, geos: [] });
     const g = o.geometry.clone();
     g.applyMatrix4(new THREE.Matrix4().multiplyMatrices(versRacine, o.matrixWorld));
@@ -618,6 +673,7 @@ function fusionnerDecor(racine) {
     mesh.castShadow = ombre;
     mesh.receiveShadow = true;
     racine.add(mesh);
+    figer(mesh);
   });
 }
 
@@ -915,7 +971,6 @@ function construireEtage() {
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), materiauLed);
     m.rotation.x = Math.PI / 2;
     m.position.set(x, HAUTEUR_PLAFOND - 0.01, z);
-    m.userData.dynamique = true;
     groupeR1.add(m);
   };
   [-15.6, -13.0, -10.4, -7.8].forEach(x => [-3.9, -1.0, 1.9].forEach(z => led(x, z + 0.2, 1.2, 0.3)));
@@ -8593,7 +8648,6 @@ function creerAscenseurs(g, niveau) {
     const v = new THREE.Mesh(new THREE.CircleGeometry(r, 14), materiauVoyant);
     v.rotation.y = a;
     v.position.set(x, y, z);
-    v.userData.dynamique = true;
     g.add(v);
   };
   // Noyau béton habillé de pierre : fond, refends entre les cabines, linteau
@@ -8607,7 +8661,6 @@ function creerAscenseurs(g, niveau) {
     const led = new THREE.Mesh(new THREE.PlaneGeometry(0.9, 0.72), materiauLedCabine);
     led.rotation.x = Math.PI / 2;
     led.position.set(2.6, 2.195, zc);
-    led.userData.dynamique = true;
     g.add(led);
     const miroir = new THREE.Mesh(new THREE.PlaneGeometry(1.0, 1.4), materiauMiroir);
     miroir.rotation.y = O / 2;
@@ -9106,7 +9159,6 @@ function enveloppeNiveau(g, { sol = 0xb2aca3, entree = null, leds = [], lumieres
     const m = new THREE.Mesh(new THREE.PlaneGeometry(w, d), materiauLedNiveaux);
     m.rotation.x = Math.PI / 2;
     m.position.set(x, HAUTEUR_PLAFOND - 0.01, z);
-    m.userData.dynamique = true;
     g.add(m);
   });
   // Quatre lumières d'ambiance par niveau (même nombre partout : pas de recompilation des matériaux)
@@ -9188,7 +9240,6 @@ function creerPortiques(g) {
       const lecteur = new THREE.Mesh(new THREE.PlaneGeometry(0.12, 0.08), materiauVoyant);
       lecteur.rotation.x = -Math.PI / 2;
       lecteur.position.set(6.1, 1.035, zc + s * 0.55);
-      lecteur.userData.dynamique = true;
       g.add(lecteur);
     });
     const pivots = [-1, 1].map(s => {
