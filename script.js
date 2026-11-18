@@ -6759,8 +6759,13 @@ function focusEcran() {
   else if (jeu.mode === "bilan") focusInitial($("bilan-boutons"), ".btn-principal");
   else if (jeu.mode === "pause") focusInitial($("ecran-pause"), "#btn-reprendre");
 }
-// Nombre de clients du portefeuille réel du participant (obligatoire) ; null si non renseigné
-const portefeuille = () => { const v = parseInt(resultats.portefeuille, 10); return v > 0 ? v : null; };
+// Nombre de clients du portefeuille du participant. Sans saisie, une valeur par défaut
+// permet de jouer tout de suite ; elle est signalée partout où elle sert (bilan, CSV).
+// La sauvegarde garde null tant que le joueur n'a rien saisi : aucune migration nécessaire.
+const PORTEFEUILLE_DEFAUT = 50;
+const portefeuilleSaisi = () => { const v = parseInt(resultats.portefeuille, 10); return v > 0 ? v : null; };
+const portefeuilleParDefaut = () => !portefeuilleSaisi();
+const portefeuille = () => portefeuilleSaisi() || PORTEFEUILLE_DEFAUT;
 const libelleExigence = () => (resultats.exigence === "confirme" ? (EN ? "Advanced" : "Confirmé") : "Standard");
 
 function appliquerCouleurNiveau(def) {
@@ -6809,11 +6814,10 @@ function majReglages() {
   $("profil-description").textContent = PROFILS[resultats.profil].description;
   const nb = portefeuille();
   const desc = $("portefeuille-description");
-  desc.classList.toggle("manquant", !nb);
-  $("portefeuille").closest(".champ").classList.toggle("invalide", !nb);
-  desc.innerHTML = nb
+  desc.classList.toggle("par-defaut", portefeuilleParDefaut());
+  desc.innerHTML = !portefeuilleParDefaut()
     ? (EN ? `<strong>Your real portfolio: ${nombre(nb)} customer${nb > 1 ? "s" : ""}.</strong> At your current funnel stage (${posture(resultats.posture[resultats.profil]).nom}), its projected lifetime value is <strong>${euros(nb * clvPosture(resultats.posture[resultats.profil]))}</strong>; at the Customer stage, it would reach <strong>${euros(nb * clvPosture(100))}</strong>.` : `<strong>Votre portefeuille réel : ${nombre(nb)} client${nb > 1 ? "s" : ""}.</strong> À votre étape actuelle du tunnel (${posture(resultats.posture[resultats.profil]).nom}), sa valeur vie projetée est de <strong>${euros(nb * clvPosture(resultats.posture[resultats.profil]))}</strong> ; à l'étape Client, elle atteindrait <strong>${euros(nb * clvPosture(100))}</strong>.`)
-    : (EN ? "<strong>Required field</strong>: enter the number of customers in your real portfolio to start a mission. It is used to measure what your funnel progress is worth in CLV on your own customers." : "<strong>Champ obligatoire</strong> : indiquez le nombre de clients de votre portefeuille réel pour démarrer une mission. Il sert à mesurer ce que votre progression dans le tunnel vaut en CLV sur vos propres clients.");
+    : (EN ? `<strong>Default value: ${nombre(nb)} customers.</strong> Enter the number of customers in your real portfolio to measure what your funnel progress is worth in CLV on your own customers. Until then, results state that the default value was used.` : `<strong>Valeur par défaut : ${nombre(nb)} clients.</strong> Indiquez le nombre de clients de votre portefeuille réel pour mesurer ce que votre progression dans le tunnel vaut en CLV sur vos propres clients. D'ici là, les résultats précisent que la valeur par défaut a été utilisée.`);
 }
 
 /* ---------- F3. Classement ---------- */
@@ -6903,7 +6907,7 @@ function afficherAccueil() {
   jeu.n = null;
   ["hud", "manette", "indice", "minimap"].forEach(id => $(id).classList.add("cache"));
   $("nom-participant").value = resultats.nom || "";
-  $("portefeuille").value = portefeuille() || "";
+  $("portefeuille").value = portefeuilleSaisi() || "";
   majReglages();
   const profil = resultats.profil;
   const grille = $("grille-etapes");
@@ -6955,13 +6959,6 @@ function placerJoueur(x, z, angle = 0, etage = 1) {
 }
 
 function lancerNiveau(i) {
-  if (!portefeuille()) {
-    if (jeu.mode !== "menu") afficherAccueil();
-    son("erreur");
-    message((EN ? "Enter the number of customers in your portfolio (required field) to start." : "Renseignez le nombre de clients de votre portefeuille (champ obligatoire) pour démarrer."), "ko", 3600);
-    setTimeout(() => { const champ = $("portefeuille"); champ.focus(); champ.closest(".champ").classList.add("invalide"); }, 0);
-    return;
-  }
   viderNiveau();
   const def = NIVEAUX[i];
   const p = def.params[resultats.exigence] || def.params.standard;
@@ -6989,7 +6986,7 @@ function lancerNiveau(i) {
   cacheTunnel = "";
   majPosture();
   $("hud-niveau").textContent = def.phase;
-  $("hud-tags").innerHTML = (EN ? `<span class="tag">${PROFILS[jeu.profil].nom}</span><span class="tag">${libelleExigence()}</span><span class="tag tag-portefeuille">${nombre(portefeuille())} customers</span>` : `<span class="tag">${PROFILS[jeu.profil].nom}</span><span class="tag">${libelleExigence()}</span><span class="tag tag-portefeuille">${nombre(portefeuille())} clients</span>`);
+  $("hud-tags").innerHTML = (EN ? `<span class="tag">${PROFILS[jeu.profil].nom}</span><span class="tag">${libelleExigence()}</span><span class="tag tag-portefeuille">${nombre(portefeuille())} customers${portefeuilleParDefaut() ? " (default)" : ""}</span>` : `<span class="tag">${PROFILS[jeu.profil].nom}</span><span class="tag">${libelleExigence()}</span><span class="tag tag-portefeuille">${nombre(portefeuille())} clients${portefeuilleParDefaut() ? " (défaut)" : ""}</span>`);
   $("hud-mission").textContent = def.mission(pp);
   $("btn-accelerer").classList.remove("actif");
 
@@ -7080,7 +7077,7 @@ function terminerNiveau(succes, etoiles, texte, options = {}) {
   const competences = Object.entries(jeu.competences).filter(([, c]) => c.total).map(([k, c]) => ({ cle: k, nom: COMPETENCES[k], pct: Math.round(c.ok / c.total * 100) }));
   const entree = {
     date: date.toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short" }),
-    nom: resultats.nom, portefeuille: nbClients, profil: PROFILS[profil].nom, etape: def.phase, exigence: libelleExigence(),
+    nom: resultats.nom, portefeuille: nbClients, portefeuilleDefaut: portefeuilleParDefaut(), profil: PROFILS[profil].nom, etape: def.phase, exigence: libelleExigence(),
     etapeId: def.id, profilId: profil, exigenceId: resultats.exigence,
     statut, statutTexte, etoiles: succes ? etoiles : 0, score, erreurs: jeu.erreurs, aides: jeu.aides, duree, dureeSec, signature,
     conversion: tunnel ? Math.round(tauxTunnel(tunnel)) : null, posture: posture().nom, reflexesRequin: jeu.reflexesRequin.length,
@@ -7092,7 +7089,7 @@ function terminerNiveau(succes, etoiles, texte, options = {}) {
   sauverResultats();
 
   $("bilan-bandeau").style.background = options.interrompu ? "#b91c1c" : def.couleur;
-  $("bilan-participant").textContent = (EN ? `${resultats.nom ? resultats.nom + " · " : ""}${PROFILS[profil].nom} · ${def.bonus ? "Bonus" : (EN ? `Stage ${i + 1}` : `Étape ${i + 1}`)} · ${def.phase} (${def.transition.join(" → ")}) · ${libelleExigence()} · Portfolio of ${nombre(nbClients)} customers · ${date.toLocaleDateString(LOCALE, { day: "2-digit", month: "long", year: "numeric" })}` : `${resultats.nom ? resultats.nom + " · " : ""}${PROFILS[profil].nom} · ${def.bonus ? "Bonus" : (EN ? `Stage ${i + 1}` : `Étape ${i + 1}`)} · ${def.phase} (${def.transition.join(" → ")}) · ${libelleExigence()} · Portefeuille de ${nombre(nbClients)} clients · ${date.toLocaleDateString(LOCALE, { day: "2-digit", month: "long", year: "numeric" })}`);
+  $("bilan-participant").textContent = (EN ? `${resultats.nom ? resultats.nom + " · " : ""}${PROFILS[profil].nom} · ${def.bonus ? "Bonus" : (EN ? `Stage ${i + 1}` : `Étape ${i + 1}`)} · ${def.phase} (${def.transition.join(" → ")}) · ${libelleExigence()} · Portfolio of ${nombre(nbClients)} customers${portefeuilleParDefaut() ? " (default value)" : ""} · ${date.toLocaleDateString(LOCALE, { day: "2-digit", month: "long", year: "numeric" })}` : `${resultats.nom ? resultats.nom + " · " : ""}${PROFILS[profil].nom} · ${def.bonus ? "Bonus" : (EN ? `Stage ${i + 1}` : `Étape ${i + 1}`)} · ${def.phase} (${def.transition.join(" → ")}) · ${libelleExigence()} · Portefeuille de ${nombre(nbClients)} clients${portefeuilleParDefaut() ? " (valeur par défaut)" : ""} · ${date.toLocaleDateString(LOCALE, { day: "2-digit", month: "long", year: "numeric" })}`);
   $("bilan-titre").textContent = options.interrompu ? (EN ? "Mission stopped" : "Mission interrompue") : statutTexte;
   $("bilan-etoiles").textContent = etoilesTexte(succes ? etoiles : 0);
   $("bilan-score").textContent = `${score}/100`;
@@ -7197,8 +7194,8 @@ function basculerSon() {
 }
 
 function exporterCSV() {
-  const entete = ["Date", "Participant", (EN ? "Customers in portfolio" : "Clients en portefeuille"), (EN ? "Profile" : "Profil"), (EN ? "Stage" : "Étape"), (EN ? "Difficulty" : "Exigence"), (EN ? "Status" : "Statut"), (EN ? "Level" : "Niveau"), "Score", (EN ? "Errors" : "Erreurs"), (EN ? "Aids" : "Aides"), (EN ? "Time" : "Durée"), (EN ? "Result code" : "Code résultat"), (EN ? "Conversion rate" : "Taux de conversion"), (EN ? "Funnel stage reached" : "Étape atteinte dans le tunnel"), (EN ? "Conversion blockers" : "Freins à la conversion"), (EN ? "Indicators" : "Indicateurs"), (EN ? "Skills" : "Compétences")];
-  const lignes = resultats.historique.map(h => [h.date, h.nom, h.portefeuille || "", h.profil, h.etape, h.exigence, h.statutTexte, h.etoiles, h.score, h.erreurs, h.aides || 0, h.duree, h.signature || "", h.conversion ?? "", h.posture || "", h.reflexesRequin ?? "", h.kpis, h.competences]);
+  const entete = ["Date", "Participant", (EN ? "Customers in portfolio" : "Clients en portefeuille"), (EN ? "Portfolio value" : "Valeur du portefeuille"), (EN ? "Profile" : "Profil"), (EN ? "Stage" : "Étape"), (EN ? "Difficulty" : "Exigence"), (EN ? "Status" : "Statut"), (EN ? "Level" : "Niveau"), "Score", (EN ? "Errors" : "Erreurs"), (EN ? "Aids" : "Aides"), (EN ? "Time" : "Durée"), (EN ? "Result code" : "Code résultat"), (EN ? "Conversion rate" : "Taux de conversion"), (EN ? "Funnel stage reached" : "Étape atteinte dans le tunnel"), (EN ? "Conversion blockers" : "Freins à la conversion"), (EN ? "Indicators" : "Indicateurs"), (EN ? "Skills" : "Compétences")];
+  const lignes = resultats.historique.map(h => [h.date, h.nom, h.portefeuille || "", h.portefeuille ? (h.portefeuilleDefaut ? (EN ? "default" : "par défaut") : (EN ? "real" : "réelle")) : "", h.profil, h.etape, h.exigence, h.statutTexte, h.etoiles, h.score, h.erreurs, h.aides || 0, h.duree, h.signature || "", h.conversion ?? "", h.posture || "", h.reflexesRequin ?? "", h.kpis, h.competences]);
   const csv = [entete, ...lignes].map(l => l.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
   const lien = document.createElement("a");

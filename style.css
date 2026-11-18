@@ -775,11 +775,9 @@ body.clavier .btn-action-pm:focus { outline: 3px solid #2563eb; outline-offset: 
 .message.message-alerte { border-left-color: #d97706; }
 .portefeuille-description { background: #eff6ff; color: #1e3a8a; }
 .portefeuille-description strong { color: #1e3a8a; }
-.portefeuille-description.manquant { background: var(--erreur-fond); color: #7f1d1d; }
-.portefeuille-description.manquant strong { color: #7f1d1d; }
-.champ-obligatoire abbr { color: var(--erreur); text-decoration: none; }
-.champ-obligatoire input[type="text"] { width: 110px; }
-.champ-obligatoire.invalide input[type="text"] { border-color: var(--erreur); outline: 2px solid #fca5a5; }
+.portefeuille-description.par-defaut { background: var(--info-fond); color: #1e3a8a; }
+.portefeuille-description.par-defaut strong { color: #1e3a8a; }
+.champ-portefeuille input[type="text"] { width: 110px; }
 .tag-portefeuille { color: #1d4ed8; border-color: #bfdbfe; background: #eff6ff; }
 .tableau-historique .rang { font-weight: 800; }
 .tableau-historique .code, .code { font-family: ui-monospace, "SFMono-Regular", Menlo, monospace; letter-spacing: 0.05em; }
