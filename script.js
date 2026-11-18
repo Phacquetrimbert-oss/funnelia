@@ -6810,7 +6810,7 @@ function majReglages() {
   if (jeu.mode === "menu" && $("trajectoire-posture")) afficherTrajectoire();
   document.querySelectorAll("[data-exigence]").forEach(b => b.classList.toggle("actif", b.dataset.exigence === resultats.exigence));
   $("case-son").checked = !!resultats.son;
-  $("btn-son").classList.toggle("coupe", !resultats.son);
+  $("btn-son").textContent = resultats.son ? T("Son : activé (M)", "Sound: on (M)") : T("Son : coupé (M)", "Sound: off (M)");
   $("profil-description").textContent = PROFILS[resultats.profil].description;
   afficherProfilResume();
   const nb = portefeuille();
@@ -6924,7 +6924,7 @@ function afficherAccueil() {
   jeu.mode = "menu";
   jeu.def = null;
   jeu.n = null;
-  ["hud", "manette", "indice", "minimap"].forEach(id => $(id).classList.add("cache"));
+  ["hud", "manette", "indice", "minimap", "rappel-touches"].forEach(id => $(id).classList.add("cache"));
   $("nom-participant").value = resultats.nom || "";
   $("portefeuille").value = portefeuilleSaisi() || "";
   majReglages();
@@ -7002,9 +7002,9 @@ function lancerNiveau(i) {
   $("hud-pastille").textContent = def.bonus ? "Bonus" : (EN ? `Stage ${i + 1}` : `Étape ${i + 1}`);
   cacheTunnel = "";
   majPosture();
-  $("hud-niveau").textContent = def.phase;
-  $("hud-tags").innerHTML = (EN ? `<span class="tag">${PROFILS[jeu.profil].nom}</span><span class="tag">${libelleExigence()}</span><span class="tag tag-portefeuille">${nombre(portefeuille())} customers${portefeuilleParDefaut() ? " (default)" : ""}</span>` : `<span class="tag">${PROFILS[jeu.profil].nom}</span><span class="tag">${libelleExigence()}</span><span class="tag tag-portefeuille">${nombre(portefeuille())} clients${portefeuilleParDefaut() ? " (défaut)" : ""}</span>`);
+  $("hud-niveau").textContent = `${def.phase} · ${def.transition.join(" → ")}`;
   $("hud-mission").textContent = def.mission(pp);
+  $("hud-mission").title = def.mission(pp);
   $("btn-accelerer").classList.remove("actif");
 
   $("briefing-bandeau").style.background = def.couleur;
@@ -7032,7 +7032,6 @@ function lancerNiveau(i) {
   majBoutonDetails();
   jeu.mode = "briefing";
   $("hud").classList.remove("cache");
-  $("minimap").classList.remove("cache");
   afficherEcran("ecran-briefing");
 }
 
@@ -7040,6 +7039,7 @@ function commencerNiveau() {
   if (jeu.mode !== "briefing") return;
   afficherEcran(null);
   $("manette").classList.remove("cache");
+  $("rappel-touches").classList.toggle("cache", resultats.historique.length > 0);
   jeu.mode = "jeu";
   noter("info", (EN ? "Mission started." : "Début de la mission."));
   animerDebutEtape(jeu.def, jeu.niveauIndex);
@@ -7068,7 +7068,7 @@ function terminerNiveau(succes, etoiles, texte, options = {}) {
   fermerEntretien();
   jeu.mode = "bilan";
   touches.clear();
-  ["manette", "indice"].forEach(id => $(id).classList.add("cache"));
+  ["manette", "indice", "rappel-touches"].forEach(id => $(id).classList.add("cache"));
   fermerPanneau();
   const i = jeu.niveauIndex, def = jeu.def, n = jeu.n;
   const statut = options.interrompu ? "interrompu" : succes ? "reussi" : "echoue";
@@ -7253,9 +7253,8 @@ document.querySelectorAll("[data-exigence]").forEach(b => b.addEventListener("cl
 }));
 $("case-son").addEventListener("change", e => { resultats.son = e.target.checked; sauverResultats(); majReglages(); son("clic"); });
 $("btn-son").addEventListener("click", basculerSon);
-$("btn-guide").addEventListener("click", () => { if (["jeu", "pause"].includes(jeu.mode)) ouvrirGuide(); });
-$("btn-equipe").addEventListener("click", () => ouvrirOrganigramme());
-$("btn-kpi").addEventListener("click", () => ouvrirTableauDeBord());
+$("btn-pause-equipe").addEventListener("click", () => ouvrirOrganigramme());
+$("btn-pause-kpi").addEventListener("click", () => ouvrirTableauDeBord());
 $("btn-kpi-accueil").addEventListener("click", () => ouvrirTableauDeBord());
 $("btn-guide-accueil").addEventListener("click", ouvrirGuide);
 $("btn-briefing-guide").addEventListener("click", ouvrirGuide);
@@ -7756,7 +7755,7 @@ function majBoutonsLangue() {
 }
 function afficherDemarrage() {
   jeu.mode = "menu";
-  ["hud", "manette", "indice", "minimap"].forEach(id => $(id).classList.add("cache"));
+  ["hud", "manette", "indice", "minimap", "rappel-touches"].forEach(id => $(id).classList.add("cache"));
   majBoutonsLangue();
   afficherEcran("ecran-demarrage");
 }
@@ -7867,7 +7866,7 @@ function ouvrirAide() {
     <h4>${T("Repères à l'écran", "On-screen cues")}</h4>
     <ul class="liste">
       <li>${T("Boussole en haut de l'écran : direction et distance de vos objectifs (losange bleu : mission, orange : tâche, rond jaune : collègue qui vous cherche, vert : destination choisie sur le plan). Un objectif situé à un autre étage pointe vers les ascenseurs, avec le niveau à rejoindre.", "Compass at the top of the screen: direction and distance of your objectives (blue diamond: mission, orange: task, yellow dot: colleague looking for you, green: destination chosen on the map). An objective on another floor points to the lifts, with the level to reach.")}</li>
-      <li>${T("Indicateur d'étage au-dessus du plan : le niveau où vous êtes. Le nom de chaque lieu s'affiche quand vous y entrez.", "Floor indicator above the map: the level you're on. Each place's name appears when you walk in.")}</li>
+      <li>${T("Indicateur d'étage en bas à gauche : le niveau où vous êtes ; son bouton Plan (touche P) ouvre le plan de l'immeuble. Le nom de chaque lieu s'affiche quand vous y entrez.", "Floor indicator at the bottom left: the level you're on; its Map button (P key) opens the building map. Each place's name appears when you walk in.")}</li>
       <li>${T("Viseur au centre : il s'éclaire quand vous regardez quelque chose d'utilisable ; l'action s'affiche juste en dessous.", "Crosshair in the centre: it lights up when you look at something usable; the action appears just below it.")}</li>
       <li>${T("Faisceau bleu : action de mission (client à rencontrer, poste de travail).", "Blue beam: mission action (customer to meet, workstation).")}</li>
       <li>${T("Faisceau orange : tâche demandée par un collègue, avec son délai dans le bloc « À faire ».", "Orange beam: task requested by a colleague, with its deadline in the “To do” block.")}</li>
@@ -8067,7 +8066,6 @@ function majDidacticiel() {
 document.querySelectorAll("[data-langue]").forEach(b => b.addEventListener("click", () => { son("clic"); choisirLangue(b.dataset.langue); }));
 document.querySelectorAll("[data-onglet-accueil]").forEach(b => b.addEventListener("click", () => { son("clic"); afficherOngletAccueil(b.dataset.ongletAccueil); }));
 $("btn-commencer").addEventListener("click", () => { son("clic"); afficherAccueil(); });
-$("btn-aide").addEventListener("click", () => ouvrirAide());
 $("btn-aide-accueil").addEventListener("click", () => ouvrirAide());
 $("btn-reglages-accueil").addEventListener("click", () => ouvrirReglages());
 $("btn-pause-aide").addEventListener("click", () => ouvrirAide());

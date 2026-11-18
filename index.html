@@ -42,7 +42,6 @@
       <div class="hud-entete">
         <span id="hud-pastille" class="hud-pastille"></span>
         <span id="hud-niveau" class="hud-niveau"></span>
-        <span id="hud-tags" class="hud-tags"></span>
       </div>
       <div id="hud-mission" class="hud-mission"></div>
       <div id="hud-tunnel" class="tunnel-ligne cache"></div>
@@ -52,18 +51,14 @@
       </div>
       <div id="hud-posture" class="posture-mini"></div>
       <div id="hud-taches" class="hud-taches cache"></div>
-      <div class="hud-erreurs"><span data-en="Errors">Erreurs</span><span id="hud-erreurs" class="pips"></span></div>
     </div>
     <div class="hud-droite">
       <div class="hud-outils">
         <span id="hud-horloge" class="pastille pastille-horloge"></span>
         <button id="btn-accelerer" class="btn-icone" title="Accélérer le temps (F)" data-en-title="Speed up time (F)" tabindex="-1">»</button>
-        <button id="btn-kpi" class="btn-icone btn-texte" title="Tableau de bord commercial (K)" data-en-title="Sales dashboard (K)" tabindex="-1">KPI</button>
-        <button id="btn-equipe" class="btn-icone btn-texte" title="Équipe et relations (O)" data-en-title="Team and relationships (O)" data-en="Team" tabindex="-1">Équipe</button>
-        <button id="btn-guide" class="btn-icone btn-texte" title="Guide du commercial (G)" data-en-title="Sales guide (G)" tabindex="-1">Guide</button>
-        <button id="btn-aide" class="btn-icone" title="Aide et commandes (H)" data-en-title="Help and controls (H)" tabindex="-1">?</button>
-        <button id="btn-son" class="btn-icone btn-texte" title="Son (M)" data-en-title="Sound (M)" data-en="Sound" tabindex="-1">Son</button>
-        <button id="btn-pause" class="btn-icone" title="Pause (Échap)" data-en-title="Pause (Esc)" tabindex="-1">❚❚</button>
+        <span class="pastille pastille-erreurs"><span data-en="Errors">Erreurs</span><span id="hud-erreurs" class="pips"></span></span>
+        <!-- KPI, équipe, guide, aide et son passent dans ce menu (et restent sur K, O, G, H, M) -->
+        <button id="btn-pause" class="btn-icone btn-texte" title="Menu et pause (Échap)" data-en-title="Menu and pause (Esc)" data-en="☰ Menu" tabindex="-1">☰ Menu</button>
       </div>
       <div id="hud-kpis" class="kpis-live"></div>
     </div>
@@ -89,6 +84,7 @@
     <div id="boussole-reperes" class="boussole-reperes"></div>
     <span class="boussole-index"></span>
   </div>
+  <div id="rappel-touches" class="rappel-touches cache" aria-hidden="true" data-en="&lt;span&gt;&lt;kbd&gt;Tab&lt;/kbd&gt; CRM&lt;/span&gt;&lt;span&gt;&lt;kbd&gt;P&lt;/kbd&gt; map&lt;/span&gt;&lt;span&gt;&lt;kbd&gt;H&lt;/kbd&gt; help&lt;/span&gt;"><span><kbd>Tab</kbd> CRM</span><span><kbd>P</kbd> plan</span><span><kbd>H</kbd> aide</span></div>
   <div id="fps" class="fps cache"></div>
   <div id="toasts" class="toasts" aria-live="polite"></div>
   <div id="coach" class="coach cache" role="status"></div>
@@ -403,8 +399,11 @@
       <div id="pause-stats" class="pause-stats"></div>
       <div class="boutons-colonne">
         <button id="btn-reprendre" class="btn-principal" data-en="Resume">Reprendre</button>
-        <button id="btn-pause-guide" class="btn-secondaire" data-en="Sales guide">Guide du commercial</button>
-        <button id="btn-pause-aide" class="btn-secondaire" data-en="Help and controls">Aide et commandes</button>
+        <button id="btn-pause-kpi" class="btn-secondaire" data-en="Sales dashboard (K)">Tableau de bord (K)</button>
+        <button id="btn-pause-equipe" class="btn-secondaire" data-en="Team (O)">Équipe (O)</button>
+        <button id="btn-pause-guide" class="btn-secondaire" data-en="Sales guide (G)">Guide du commercial (G)</button>
+        <button id="btn-pause-aide" class="btn-secondaire" data-en="Help and controls (H)">Aide et commandes (H)</button>
+        <button id="btn-son" class="btn-secondaire"></button>
         <button id="btn-pause-reglages" class="btn-secondaire" data-en="Settings">Paramètres</button>
         <button id="btn-recommencer" class="btn-secondaire" data-en="Restart the mission">Recommencer la mission</button>
         <button id="btn-pause-accueil" class="btn-secondaire" data-en="Change stage">Changer d'étape</button>
