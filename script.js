@@ -7028,6 +7028,8 @@ function lancerNiveau(i) {
     (EN ? "Colleagues' tips are aids: each one costs 3 points. The sales guide (G key) is free to use." : "Les conseils des collègues sont des aides : chacune coûte 3 points au score. Le guide du commercial (touche G) est libre d'accès."),
     (EN ? "Time is simulated: it moves forward when you walk and with each action. It stops during conversations and windows." : "Le temps est simulé : il avance quand vous vous déplacez et à chaque action. Il s'arrête pendant les entretiens et les fenêtres.")
   ]).map(c => `<li>${echapper(c)}</li>`).join("");
+  $("briefing-details").open = false;
+  majBoutonDetails();
   jeu.mode = "briefing";
   $("hud").classList.remove("cache");
   $("minimap").classList.remove("cache");
@@ -7257,6 +7259,14 @@ $("btn-kpi").addEventListener("click", () => ouvrirTableauDeBord());
 $("btn-kpi-accueil").addEventListener("click", () => ouvrirTableauDeBord());
 $("btn-guide-accueil").addEventListener("click", ouvrirGuide);
 $("btn-briefing-guide").addEventListener("click", ouvrirGuide);
+// Briefing : « Détails » déplie objectif, tunnel, profil et critères (souris ou clavier ← →)
+function majBoutonDetails() {
+  const ouvert = $("briefing-details").open;
+  $("btn-briefing-details").textContent = ouvert ? T("Masquer les détails", "Hide details") : T("Détails", "Details");
+  $("btn-briefing-details").setAttribute("aria-expanded", String(ouvert));
+}
+$("briefing-details").addEventListener("toggle", majBoutonDetails);
+$("btn-briefing-details").addEventListener("click", () => { son("clic"); $("briefing-details").open = !$("briefing-details").open; });
 $("btn-pause-guide").addEventListener("click", ouvrirGuide);
 $("btn-accelerer").addEventListener("click", basculerAcceleration);
 $("btn-demarrer").addEventListener("click", commencerNiveau);

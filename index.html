@@ -314,14 +314,17 @@
       <p id="briefing-badge" class="badge"></p>
       <h2 id="briefing-titre"></h2>
       <p id="briefing-contexte" class="contexte"></p>
-      <div class="bloc">
-        <h3 data-en="Stage objective">Objectif de l'étape</h3>
-        <p id="briefing-business"></p>
-      </div>
       <div class="bloc bloc-accent">
         <h3 data-en="Your mission">Votre mission</h3>
         <p id="briefing-mission" class="fort"></p>
         <ul id="briefing-consignes" class="liste"></ul>
+      </div>
+      <!-- Le détail se replie : la mission suffit pour démarrer -->
+      <details id="briefing-details" class="briefing-details">
+      <summary data-en="Details: stage objective, funnel, profile, assessment criteria">Détails : objectif de l'étape, tunnel, profil, critères d'évaluation</summary>
+      <div class="bloc">
+        <h3 data-en="Stage objective">Objectif de l'étape</h3>
+        <p id="briefing-business"></p>
       </div>
       <div class="bloc bloc-posture">
         <h3 data-en="This stage of the funnel">Cette étape du tunnel</h3>
@@ -335,7 +338,9 @@
         <h3 data-en="Assessment criteria">Critères d'évaluation</h3>
         <ul id="briefing-criteres" class="liste"></ul>
       </div>
+      </details>
       <div class="boutons-ligne">
+        <button id="btn-briefing-details" class="btn-secondaire" aria-controls="briefing-details"></button>
         <button id="btn-briefing-guide" class="btn-secondaire" data-en="Sales guide">Guide du commercial</button>
         <button id="btn-briefing-retour" class="btn-secondaire" data-en="Change stage">Changer d'étape</button>
         <button id="btn-demarrer" class="btn-principal" data-en="Start the mission">Démarrer la mission</button>

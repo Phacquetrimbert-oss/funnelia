@@ -880,6 +880,9 @@ body.clavier .btn-action-pm:focus { outline: 3px solid #2563eb; outline-offset: 
 .hero-etat { margin: 0; font-size: 12px; color: var(--gris); text-align: center; }
 .suivi-entete { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 26px; }
 .suivi-entete h2 { margin: 0; font-size: 18px; color: var(--marque); }
+.briefing-details { margin: 4px 0 6px; }
+.briefing-details > summary { cursor: pointer; font-size: 13px; font-weight: 600; color: var(--gris); padding: 8px 0; }
+.briefing-details > summary:hover { color: var(--texte); }
 .aide-contexte { margin-bottom: 14px; color: #334155; line-height: 1.55; }
 .aide-contexte p { margin: 0 0 8px; }
 .hero-action { border: 1px solid var(--bord); border-radius: 14px; padding: 16px; background: linear-gradient(180deg, #f8fafc, #fff); display: flex; flex-direction: column; gap: 12px; }
