@@ -24,7 +24,6 @@
     <button id="btn-plan" class="ec-plan" title="Plan de l'immeuble (P)" data-en-title="Building map (P)" tabindex="-1" data-en="Map">Plan</button>
   </div>
   <div id="lieu" class="lieu cache" aria-live="polite"></div>
-  <div id="fil" class="fil" aria-live="polite" aria-label="Fil de l'entreprise" data-en-aria-label="Company feed"></div>
   <div id="anim-conversion" class="anim-conversion cache" aria-live="polite"></div>
   <div id="anim-etape" class="anim-etape cache" aria-live="polite"></div>
   <div id="ascenseur" class="ascenseur cache" role="dialog" aria-label="Ascenseur" data-en-aria-label="Lift">
@@ -38,6 +37,7 @@
 
   <!-- HUD -->
   <div id="hud" class="hud cache">
+    <div class="hud-gauche">
     <div class="hud-bloc">
       <div class="hud-entete">
         <span id="hud-pastille" class="hud-pastille"></span>
@@ -52,6 +52,9 @@
       <div id="hud-posture" class="posture-mini"></div>
       <div id="hud-taches" class="hud-taches cache"></div>
     </div>
+      <!-- KPI de la mission (couche 2) : affichés quand ils changent ; les alertes restent -->
+      <div id="hud-kpis" class="kpis-live"></div>
+    </div>
     <div class="hud-droite">
       <div class="hud-outils">
         <span id="hud-horloge" class="pastille pastille-horloge"></span>
@@ -60,7 +63,6 @@
         <!-- KPI, équipe, guide, aide et son passent dans ce menu (et restent sur K, O, G, H, M) -->
         <button id="btn-pause" class="btn-icone btn-texte" title="Menu et pause (Échap)" data-en-title="Menu and pause (Esc)" data-en="☰ Menu" tabindex="-1">☰ Menu</button>
       </div>
-      <div id="hud-kpis" class="kpis-live"></div>
     </div>
   </div>
 
@@ -86,7 +88,11 @@
   </div>
   <div id="rappel-touches" class="rappel-touches cache" aria-hidden="true" data-en="&lt;span&gt;&lt;kbd&gt;Tab&lt;/kbd&gt; CRM&lt;/span&gt;&lt;span&gt;&lt;kbd&gt;P&lt;/kbd&gt; map&lt;/span&gt;&lt;span&gt;&lt;kbd&gt;H&lt;/kbd&gt; help&lt;/span&gt;"><span><kbd>Tab</kbd> CRM</span><span><kbd>P</kbd> plan</span><span><kbd>H</kbd> aide</span></div>
   <div id="fps" class="fps cache"></div>
-  <div id="toasts" class="toasts" aria-live="polite"></div>
+  <!-- Pile de messages unique (couche 2) : notifications puis fil de l'entreprise -->
+  <div id="notifs" class="notifs">
+    <div id="toasts" class="toasts" aria-live="polite"></div>
+    <div id="fil" class="fil" aria-live="polite" aria-label="Fil de l'entreprise" data-en-aria-label="Company feed"></div>
+  </div>
   <div id="coach" class="coach cache" role="status"></div>
 
   <!-- Entretien -->

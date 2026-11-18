@@ -3078,9 +3078,22 @@ function hudJauge(label, pct, valeur = "") {
   $("hud-jauge-rempli").style.width = `${clamp(pct, 0, 100)}%`;
 }
 let cacheKpis = "";
+const kpisAffiches = { valeurs: {}, minuterie: null };
+// Couche 2 : un KPI qui change s'affiche 4 s (mis en évidence) ; les KPI en alerte restent visibles
 function hudKpis(liste) {
   const html = liste.map(k => `<span class="pastille${k.alerte ? " alerte" : ""}"><span class="k-label">${echapper(k.label)}</span><strong>${echapper(k.valeur)}</strong></span>`).join("");
-  if (html !== cacheKpis) { $("hud-kpis").innerHTML = html; cacheKpis = html; }
+  if (html === cacheKpis) return;
+  const el = $("hud-kpis");
+  el.innerHTML = html;
+  cacheKpis = html;
+  [...el.children].forEach((c, i) => {
+    const k = liste[i], avant = kpisAffiches.valeurs[k.label];
+    if (avant !== undefined && avant !== String(k.valeur)) c.classList.add("change");
+    kpisAffiches.valeurs[k.label] = String(k.valeur);
+  });
+  el.classList.add("flash");
+  clearTimeout(kpisAffiches.minuterie);
+  kpisAffiches.minuterie = setTimeout(() => { el.classList.remove("flash"); el.querySelectorAll(".change").forEach(c => c.classList.remove("change")); }, 4000);
 }
 /* Tunnel de conversion : chaque mission fait passer ses contacts d'un
    stade au suivant (ex. lead → opportunité). On affiche les volumes de
@@ -6802,6 +6815,7 @@ function viderNiveau() {
   $("btn-panneau").textContent = "–";
   $("hud-jauge").classList.add("cache");
   cacheKpis = "";
+  kpisAffiches.valeurs = {};
   $("hud-kpis").innerHTML = "";
 }
 
@@ -7888,7 +7902,7 @@ function message(texte, type = "", duree = 2800) {
   el.dataset.texte = texte;
   el.innerHTML = `<span class="toast-icone">${ICONES_TOAST[type] || "i"}</span><span class="toast-texte">${echapper(texte)}</span>`;
   zone.appendChild(el);
-  while (zone.children.length > 3) zone.firstElementChild.remove();
+  while (zone.children.length > 2) zone.firstElementChild.remove();
   setTimeout(() => { el.classList.add("sortie"); setTimeout(() => el.remove(), 300); }, duree);
 }
 
@@ -8616,7 +8630,9 @@ function objectifsBoussole() {
 }
 function majBoussole() {
   const el = $("boussole");
-  const visible = jeu.mode === "jeu" && jeu.def && reglages().boussole !== false;
+  // Couche 2 : la boussole n'apparaît que lorsqu'il y a un objectif à indiquer
+  const objectifs = jeu.mode === "jeu" && jeu.def && reglages().boussole !== false ? objectifsBoussole() : [];
+  const visible = objectifs.length > 0;
   el.classList.toggle("cache", !visible);
   if (!visible) return;
   const largeur = el.clientWidth || 460, champ = Math.PI * 2 / 3;
@@ -8628,7 +8644,7 @@ function majBoussole() {
     ecrireStyle(g.el, "display", visibleG ? "block" : "none");
     if (visibleG) ecrireStyle(g.el, "left", `${(0.5 + e / champ) * largeur}px`);
   });
-  const marques = objectifsBoussole().map(o => {
+  const marques = objectifs.map(o => {
     const e = ecart(cap(o.x - joueur.x, o.z - joueur.z));
     const d = distanceMetres(o);
     const bord = Math.abs(e) > champ / 2;
@@ -11063,7 +11079,8 @@ function publier(auteur, texte, { couleur = "#334155", type = "info" } = {}) {
   el.className = `fil-post fil-${type}`;
   el.innerHTML = `<span class="fil-avatar" style="background:${couleur}">${echapper(initiales(auteur))}</span><span class="fil-corps"><span class="fil-tete"><strong>${echapper(auteur)}</strong><time>${heure}</time></span><span class="fil-texte">${echapper(texte)}</span></span>`;
   zone.appendChild(el);
-  while (zone.children.length > 3) zone.firstChild.remove();
+  // Pile unique : un seul message du fil à la fois, sous les notifications
+  while (zone.children.length > 1) zone.firstChild.remove();
   setTimeout(() => el.classList.add("sortie"), 7500);
   setTimeout(() => el.remove(), 8100);
 }
