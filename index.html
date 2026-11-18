@@ -196,24 +196,23 @@
             <button type="button" class="segment-option" data-langue="fr">FR</button>
             <button type="button" class="segment-option" data-langue="en">EN</button>
           </div>
-          <button id="btn-aide-accueil" class="btn-secondaire btn-petit" data-en="Help">Aide</button>
-          <button id="btn-reglages-accueil" class="btn-secondaire btn-petit" data-en="Settings">Paramètres</button>
-          <button id="btn-kpi-accueil" class="btn-secondaire btn-petit" data-en="Sales dashboard">Tableau de bord</button>
+          <button id="btn-aide-accueil" class="btn-secondaire btn-petit" data-en="How does it work?">Comment ça marche ?</button>
           <button id="btn-guide-accueil" class="btn-secondaire btn-petit" data-en="Sales guide">Guide du commercial</button>
+          <button id="btn-reglages-accueil" class="btn-secondaire btn-petit" data-en="Settings">Paramètres</button>
         </nav>
       </header>
 
       <section class="hero">
         <div class="hero-texte">
           <h1 data-en="From prospect to customer">De prospect à client</h1>
-          <p class="intro" data-en="You are a sales rep at &lt;strong&gt;Veltis&lt;/strong&gt;, publisher of the SaaS sales management software &lt;strong&gt;Veltis One&lt;/strong&gt;, in its &lt;strong&gt;three-level building on the Esplanade de La Défense&lt;/strong&gt;. Everything happens at the office: lobby and showroom on the ground floor, sales floor on level 1, Academy and leadership on level 2, linked by lifts. Around fifteen colleagues work, have coffee, meet and make calls there: &lt;strong&gt;talk to them&lt;/strong&gt; (E key) to build your internal network. Your job: &lt;strong&gt;move every prospect through the conversion funnel&lt;/strong&gt;, from the stranger met at the Forum breakfast to the signed customer.">Vous êtes commercial chez <strong>Veltis</strong>, éditeur du logiciel SaaS <strong>Veltis One</strong>, dans son <strong>immeuble de trois niveaux sur l'esplanade de La Défense</strong>. Tout se joue dans les bureaux : hall et showroom au RDC, plateau commercial au R+1, Academy et direction au R+2, reliés par les ascenseurs. Une quinzaine de collègues y travaillent, prennent un café, se réunissent, téléphonent : <strong>échangez avec eux</strong> (touche E) pour construire votre réseau interne. Votre métier : <strong>faire avancer chaque prospect dans le tunnel de conversion</strong>, de l'inconnu rencontré à la matinale du Forum jusqu'au client signé.</p>
-          <p class="intro intro-fil" data-en="&lt;strong&gt;Your common thread: the conversion funnel.&lt;/strong&gt; Each mission moves your contacts one stage further: &lt;strong&gt;Prospect → Lead → Opportunity → Customer&lt;/strong&gt;. Your funnel gauge moves forward when your decisions make contacts convert and back when they block conversion; every stage change is highlighted by an animation. The &lt;strong&gt;dashboard&lt;/strong&gt; compares your revenue, forecast, margin and profitability with the other sales reps.">
-            <strong>Votre fil rouge : le tunnel de conversion.</strong> Chaque mission fait avancer vos contacts d'une étape : <strong>Prospect → Lead → Opportunité → Client</strong>. Votre jauge progresse quand vos décisions font convertir et recule quand elles freinent la conversion ; chaque passage d'étape est mis en scène par une animation. Le <strong>tableau de bord</strong> compare votre CA, votre prévisionnel, votre marge et votre rentabilité à ceux des autres commerciaux.</p>
+          <p class="intro" data-en="You are a sales rep at &lt;strong&gt;Veltis&lt;/strong&gt;, in La Défense. Move every contact through the conversion funnel: &lt;strong&gt;Prospect → Lead → Opportunity → Customer&lt;/strong&gt;.">Vous êtes commercial chez <strong>Veltis</strong>, à La Défense. Faites avancer chaque contact dans le tunnel de conversion : <strong>Prospect → Lead → Opportunité → Client</strong>.</p>
+          <p class="intro" data-en="Talk to your colleagues (&lt;kbd&gt;E&lt;/kbd&gt;), drive your CRM (&lt;kbd&gt;Tab&lt;/kbd&gt;) and avoid conversion blockers.">Parlez à vos collègues (<kbd>E</kbd>), pilotez votre CRM (<kbd>Tab</kbd>) et évitez les freins à la conversion.</p>
+          <div id="profil-resume" class="profil-resume"></div>
         </div>
         <aside id="hero-action" class="hero-action" aria-live="polite"></aside>
       </section>
 
-      <section class="profil-carte">
+      <section id="profil-carte" class="profil-carte cache">
         <div class="profil-entete">
           <h2 data-en="Your participant profile">Votre profil de participant</h2>
           <p class="profil-aide" data-en="These settings apply to every mission.">Ces réglages s'appliquent à toutes les missions.</p>
@@ -252,10 +251,14 @@
 
       <div class="titre-tunnel">
         <h2 data-en="The conversion funnel">Le tunnel de conversion</h2>
-        <p data-en="Four missions, one per funnel stage, plus a retention bonus. Choose a stage to see its briefing.">Quatre missions, une par étage du tunnel, et un bonus de fidélisation. Choisissez une étape pour voir son briefing.</p>
+        <p data-en="Four stages and a retention bonus: choose one to see its briefing.">Quatre étapes et un bonus de fidélisation : choisissez-en une pour voir son briefing.</p>
       </div>
       <div id="grille-etapes" class="grille-etapes"></div>
 
+      <div class="suivi-entete">
+        <h2 data-en="Your progress">Votre suivi</h2>
+        <button id="btn-kpi-accueil" class="btn-secondaire btn-petit" data-en="Sales dashboard">Tableau de bord</button>
+      </div>
       <nav class="onglets-accueil" role="tablist" aria-label="Suivi" data-en-aria-label="Progress">
         <button type="button" role="tab" data-onglet-accueil="progression" class="onglet-accueil" data-en="Progress">Progression</button>
         <button type="button" role="tab" data-onglet-accueil="badges" class="onglet-accueil" data-en="Badges &amp; certificate">Badges et certificat</button>
@@ -299,15 +302,6 @@
       </section>
 
       <footer class="accueil-pied">
-        <div class="commandes">
-          <span data-en="&lt;kbd&gt;Mouse&lt;/kbd&gt; look · &lt;kbd&gt;W A S D&lt;/kbd&gt; / &lt;kbd&gt;Z Q S D&lt;/kbd&gt; move · &lt;kbd&gt;← →&lt;/kbd&gt; turn"><kbd>Souris</kbd> regarder · <kbd>Z Q S D</kbd> / <kbd>W A S D</kbd> se déplacer · <kbd>← →</kbd> tourner</span>
-          <span data-en="&lt;kbd&gt;E&lt;/kbd&gt; act / talk"><kbd>E</kbd> agir / échanger</span>
-          <span data-en="&lt;kbd&gt;Tab&lt;/kbd&gt; CRM"><kbd>Tab</kbd> CRM</span>
-          <span data-en="&lt;kbd&gt;O&lt;/kbd&gt; team"><kbd>O</kbd> équipe</span>
-          <span><kbd>G</kbd> guide</span>
-          <span data-en="&lt;kbd&gt;H&lt;/kbd&gt; help"><kbd>H</kbd> aide</span>
-          <span data-en="&lt;kbd&gt;Esc&lt;/kbd&gt; pause"><kbd>Échap</kbd> pause</span>
-        </div>
         <p class="pied-credits" data-en="Funnelia · fictional companies, people and prices · results stored on this device only">Funnelia · entreprises, personnes et tarifs fictifs · résultats enregistrés uniquement sur ce poste</p>
       </footer>
     </div>

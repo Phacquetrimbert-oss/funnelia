@@ -6812,12 +6812,31 @@ function majReglages() {
   $("case-son").checked = !!resultats.son;
   $("btn-son").classList.toggle("coupe", !resultats.son);
   $("profil-description").textContent = PROFILS[resultats.profil].description;
+  afficherProfilResume();
   const nb = portefeuille();
   const desc = $("portefeuille-description");
   desc.classList.toggle("par-defaut", portefeuilleParDefaut());
   desc.innerHTML = !portefeuilleParDefaut()
     ? (EN ? `<strong>Your real portfolio: ${nombre(nb)} customer${nb > 1 ? "s" : ""}.</strong> At your current funnel stage (${posture(resultats.posture[resultats.profil]).nom}), its projected lifetime value is <strong>${euros(nb * clvPosture(resultats.posture[resultats.profil]))}</strong>; at the Customer stage, it would reach <strong>${euros(nb * clvPosture(100))}</strong>.` : `<strong>Votre portefeuille réel : ${nombre(nb)} client${nb > 1 ? "s" : ""}.</strong> À votre étape actuelle du tunnel (${posture(resultats.posture[resultats.profil]).nom}), sa valeur vie projetée est de <strong>${euros(nb * clvPosture(resultats.posture[resultats.profil]))}</strong> ; à l'étape Client, elle atteindrait <strong>${euros(nb * clvPosture(100))}</strong>.`)
     : (EN ? `<strong>Default value: ${nombre(nb)} customers.</strong> Enter the number of customers in your real portfolio to measure what your funnel progress is worth in CLV on your own customers. Until then, results state that the default value was used.` : `<strong>Valeur par défaut : ${nombre(nb)} clients.</strong> Indiquez le nombre de clients de votre portefeuille réel pour mesurer ce que votre progression dans le tunnel vaut en CLV sur vos propres clients. D'ici là, les résultats précisent que la valeur par défaut a été utilisée.`);
+}
+
+// Accueil : profil résumé en une ligne ; « Modifier » déplie la carte de réglages
+const accueil = { profilOuvert: false };
+function afficherProfilResume() {
+  const nb = portefeuille();
+  const tag = (t, classe = "") => `<span class="tag ${classe}">${t}</span>`;
+  $("profil-resume").innerHTML = `<span class="pr-label">${T("Votre profil :", "Your profile:")}</span>` +
+    (resultats.nom ? tag(echapper(resultats.nom)) : "") + tag(PROFILS[resultats.profil].nom) + tag(libelleExigence()) +
+    (portefeuilleParDefaut() ? tag(T(`${nombre(nb)} clients · par défaut`, `${nombre(nb)} customers · default`), "tag-defaut") : tag(T(`${nombre(nb)} client${nb > 1 ? "s" : ""}`, `${nombre(nb)} customer${nb > 1 ? "s" : ""}`))) +
+    `<button type="button" id="btn-profil" class="btn-lien" aria-expanded="${accueil.profilOuvert}" aria-controls="profil-carte">${accueil.profilOuvert ? T("Masquer", "Hide") : T("Modifier", "Edit")}</button>`;
+  $("btn-profil").addEventListener("click", () => {
+    son("clic");
+    accueil.profilOuvert = !accueil.profilOuvert;
+    $("profil-carte").classList.toggle("cache", !accueil.profilOuvert);
+    afficherProfilResume();
+    if (accueil.profilOuvert) focaliser($("nom-participant")); else focaliser($("btn-profil"));
+  });
 }
 
 /* ---------- F3. Classement ---------- */
@@ -6909,6 +6928,7 @@ function afficherAccueil() {
   $("nom-participant").value = resultats.nom || "";
   $("portefeuille").value = portefeuilleSaisi() || "";
   majReglages();
+  $("profil-carte").classList.toggle("cache", !accueil.profilOuvert);
   const profil = resultats.profil;
   const grille = $("grille-etapes");
   grille.innerHTML = "";
@@ -6924,15 +6944,12 @@ function afficherAccueil() {
       : (EN ? "<span>Not played</span><span></span>" : "<span>Non réalisée</span><span></span>");
     if (def.bonus) carte.classList.add("carte-bonus");
     const tn = resultats.tunnels[profil][i];
+    carte.title = def.objectifTableau;
     carte.innerHTML =
-      `<span class="num">${def.bonus ? (EN ? "Bonus · after conversion" : "Bonus · après la conversion") : (EN ? `Funnel stage ${i + 1}` : `Étape ${i + 1} du tunnel`)}</span>` +
+      `<span class="num">${def.bonus ? "Bonus" : (EN ? `Stage ${i + 1}` : `Étape ${i + 1}`)}</span>` +
       `<span class="nom">${def.phase}</span>` +
       `<span class="transition">${def.transition[0]} <span>→</span> ${def.transition[1]}</span>` +
-      `<span class="objectif">${def.objectifTableau}</span>` +
-      (EN ? `<span class="ligne-petite"><strong>Activities:</strong> ${def.activitesTableau}</span>` : `<span class="ligne-petite"><strong>Activités :</strong> ${def.activitesTableau}</span>`) +
-      `<span class="ligne-petite"><strong>${EN ? "KPIs:" : "KPI :"}</strong> ${def.kpiTableau}</span>` +
-      `<span class="mode">${def.mode[profil]}</span>` +
-      (tn ? (EN ? `<span class="ligne-petite"><strong>Latest conversion:</strong> ${pourcent(tn.taux)} (${tn.sortie}/${tn.entree})</span>` : `<span class="ligne-petite"><strong>Dernière conversion :</strong> ${pourcent(tn.taux)} (${tn.sortie}/${tn.entree})</span>`) : "") +
+      (tn ? (EN ? `<span class="ligne-petite">Latest conversion: ${pourcent(tn.taux)}</span>` : `<span class="ligne-petite">Dernière conversion : ${pourcent(tn.taux)}</span>`) : "") +
       `<span class="score">${score}</span>`;
     carte.addEventListener("click", () => { son("clic"); lancerNiveau(i); });
     grille.appendChild(carte);
@@ -7808,6 +7825,10 @@ function ouvrirAide() {
   if (!["menu", "pause", "jeu"].includes(jeu.mode)) return;
   const touche = (k, t) => `<div class="aide-touche"><span class="aide-kbd">${k}</span><span>${t}</span></div>`;
   const corps = `
+    <div class="aide-contexte">
+      <p>${T("Vous êtes commercial chez <strong>Veltis</strong>, éditeur du logiciel SaaS <strong>Veltis One</strong>, dans son <strong>immeuble de trois niveaux sur l'esplanade de La Défense</strong>. Tout se joue dans les bureaux : hall et showroom au RDC, plateau commercial au R+1, Academy et direction au R+2, reliés par les ascenseurs. Une quinzaine de collègues y travaillent, prennent un café, se réunissent, téléphonent : <strong>échangez avec eux</strong> (touche E) pour construire votre réseau interne.", "You are a sales rep at <strong>Veltis</strong>, publisher of the SaaS sales management software <strong>Veltis One</strong>, in its <strong>three-level building on the Esplanade de La Défense</strong>. Everything happens at the office: lobby and showroom on the ground floor, sales floor on level 1, Academy and leadership on level 2, linked by lifts. Around fifteen colleagues work, have coffee, meet and make calls there: <strong>talk to them</strong> (E key) to build your internal network.")}</p>
+      <p>${T("<strong>Votre fil rouge : le tunnel de conversion.</strong> Chaque mission fait avancer vos contacts d'une étape : <strong>Prospect → Lead → Opportunité → Client</strong>. Votre jauge progresse quand vos décisions font convertir et recule quand elles freinent la conversion. Le <strong>tableau de bord</strong> compare votre CA, votre prévisionnel, votre marge et votre rentabilité à ceux des autres commerciaux.", "<strong>Your common thread: the conversion funnel.</strong> Each mission moves your contacts one stage further: <strong>Prospect → Lead → Opportunity → Customer</strong>. Your funnel gauge moves forward when your decisions make contacts convert and back when they block conversion. The <strong>dashboard</strong> compares your revenue, forecast, margin and profitability with the other sales reps.")}</p>
+    </div>
     <div class="aide-boucle">
       <div><span class="aide-num">1</span><strong>${T("Explorez l'immeuble", "Explore the building")}</strong><p>${T("Trois niveaux reliés par les ascenseurs : RDC (hall, café, showroom), R+1 (plateau commercial), R+2 (Academy, direction, service clients).", "Three levels linked by lifts: ground floor (lobby, café, showroom), level 1 (sales floor), level 2 (Academy, leadership, customer care).")}</p></div>
       <div><span class="aide-num">2</span><strong>${T("Convertissez", "Convert")}</strong><p>${T("Chaque mission fait avancer vos contacts d'un étage du tunnel : prospect, lead, opportunité, client.", "Each mission moves your contacts one stage down the funnel: prospect, lead, opportunity, customer.")}</p></div>
@@ -7844,7 +7865,7 @@ function ouvrirAide() {
       <li>${T("Jauge du tunnel : Prospect → Lead → Opportunité → Client. Chaque passage d'étape est animé ; elle fixe aussi la durée de vie projetée de vos clients.", "Funnel gauge: Prospect → Lead → Opportunity → Customer. Every stage change is animated; it also sets your customers' projected lifetime.")}</li>
       <li>${T("Chaque contact qui passe d'une étape à la suivante pendant une mission (prospect → lead → opportunité → client) est signalé par une animation.", "Every contact moving from one stage to the next during a mission (prospect → lead → opportunity → customer) is highlighted by an animation.")}</li>
     </ul>`;
-  ouvrirFenetre({ titre: T("Aide et commandes", "Help and controls"), sousTitre: "Funnelia", corps, large: true, navigation: "document", boutons: [{ label: T("Fermer", "Close"), classe: "btn-principal", action: fermerFenetre }] });
+  ouvrirFenetre({ titre: jeu.mode === "menu" ? T("Comment ça marche ?", "How does it work?") : T("Aide et commandes", "Help and controls"), sousTitre: "Funnelia", corps, large: true, navigation: "document", boutons: [{ label: T("Fermer", "Close"), classe: "btn-principal", action: fermerFenetre }] });
 }
 
 /* ---------- G4. Notifications empilées ---------- */
@@ -7880,17 +7901,13 @@ function afficherHero() {
   const p = posture(v);
   const toutFait = reussies === NB_ETAPES;
   $("hero-action").innerHTML = `
-    <div class="hero-progression">
-      <div class="anneau" style="--pct:${reussies / NB_ETAPES * 100}"><span>${reussies}/${NB_ETAPES}</span></div>
-      <div><strong>${T("Missions réussies", "Missions passed")}</strong><span>${PROFILS[profil].nom} · ${libelleExigence()}</span></div>
-    </div>
-    <div class="hero-posture" data-posture="${p.cle}"><span class="pst-icone">${p.icone}</span><span><strong>${p.nom}</strong> · ${v}/100<br><small>${T("Durée de vie projetée de vos clients : ", "Projected customer lifetime: ")}${ansTexte(dureeViePosture(v))}</small></span></div>
     <div class="hero-reco" style="--couleur:${def.couleur}">
-      <span class="hero-reco-label">${toutFait ? T("Pour progresser", "To improve") : T("Prochaine étape recommandée", "Recommended next step")}</span>
+      <span class="hero-reco-label">${toutFait ? T("Pour progresser", "To improve") : T("Étape recommandée", "Recommended stage")} · ${def.bonus ? "Bonus" : `${i + 1} / 4`}</span>
       <strong>${def.phase}</strong>
-      <span>${def.transition.join(" → ")} · ${def.objectifTableau}</span>
+      <span>${def.transition.join(" → ")}</span>
     </div>
-    <button type="button" id="btn-hero" class="btn-principal btn-grand">${T("Ouvrir le briefing", "Open the briefing")} · ${def.phase}</button>`;
+    <button type="button" id="btn-hero" class="btn-principal btn-grand">${T("Jouer", "Play")}</button>
+    <p class="hero-etat">${T("Missions réussies :", "Missions passed:")} <strong>${reussies}/${NB_ETAPES}</strong> · ${T("tunnel :", "funnel:")} <strong style="color:var(--pst)" data-posture="${p.cle}">${p.nom} ${v}/100</strong></p>`;
   $("btn-hero").addEventListener("click", () => { son("clic"); lancerNiveau(i); });
   document.querySelectorAll(".carte-etape").forEach(c => {
     c.classList.toggle("recommandee", Number(c.dataset.index) === i);

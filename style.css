@@ -870,6 +870,18 @@ body.clavier .btn-action-pm:focus { outline: 3px solid #2563eb; outline-offset: 
 .segment-langue .segment-option { padding: 6px 12px; font-size: 12px; font-weight: 700; }
 .hero { display: grid; grid-template-columns: 1.5fr 1fr; gap: 22px; align-items: start; }
 .hero-texte h1 { font-size: 34px; color: var(--marque); }
+.hero-texte .intro { font-size: 16px; color: #334155; margin-bottom: 8px; }
+.hero { align-items: center; }
+.profil-resume { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 14px; font-size: 13px; }
+.profil-resume .pr-label { color: var(--gris); font-weight: 600; margin-right: 2px; }
+.profil-resume .tag { background: var(--blanc); border: 1px solid var(--bord); border-radius: 999px; padding: 3px 10px; font-weight: 600; color: #334155; }
+.profil-resume .tag-defaut { border-style: dashed; }
+.profil-resume .btn-lien { margin-left: 4px; }
+.hero-etat { margin: 0; font-size: 12px; color: var(--gris); text-align: center; }
+.suivi-entete { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 26px; }
+.suivi-entete h2 { margin: 0; font-size: 18px; color: var(--marque); }
+.aide-contexte { margin-bottom: 14px; color: #334155; line-height: 1.55; }
+.aide-contexte p { margin: 0 0 8px; }
 .hero-action { border: 1px solid var(--bord); border-radius: 14px; padding: 16px; background: linear-gradient(180deg, #f8fafc, #fff); display: flex; flex-direction: column; gap: 12px; }
 .hero-progression { display: flex; align-items: center; gap: 12px; }
 .hero-progression strong { display: block; font-size: 14px; }
@@ -882,7 +894,7 @@ body.clavier .btn-action-pm:focus { outline: 3px solid #2563eb; outline-offset: 
 .hero-reco { border-left: 4px solid var(--couleur); padding: 6px 10px; display: flex; flex-direction: column; gap: 2px; font-size: 13px; }
 .hero-reco-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.06em; color: var(--gris); }
 .hero-reco strong { font-size: 17px; color: var(--couleur); }
-.hero-action .btn-principal { width: 100%; }
+.hero-action .btn-principal { width: 100%; font-size: 18px; padding: 14px; }
 .profil-carte { margin: 22px 0 6px; padding: 16px 18px; border: 1px solid var(--bord); border-radius: 14px; }
 .profil-entete { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
 .profil-entete h2 { font-size: 16px; margin: 0; }
