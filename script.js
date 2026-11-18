@@ -4211,7 +4211,7 @@ const M1 = {
       pnj.arrivee = Math.round((i / melange.length) * 300 + aleatoire(0, 25));
       pnj.depart = pnj.arrivee + entier(100, 170);
       pnj.etiquette = creerEtiquette(mesh, (EN ? "Visitor" : "Visiteur"), 2.1, "");
-      pnj.inter = ajouterInteractif({ objet: mesh, label: `aborder ${v.nom}`, action: () => aborderVisiteur(n, pnj), rayon: 1.9, actif: false, balise: false });
+      pnj.inter = ajouterInteractif({ objet: mesh, label: T(`aborder ${v.nom}`, `approach ${v.nom}`), action: () => aborderVisiteur(n, pnj), rayon: 1.9, actif: false, balise: false });
       n.visiteurs.push(pnj);
     });
   },
@@ -4450,7 +4450,7 @@ function aborderVisiteur(n, p) {
       } },
       { label: (EN ? "Present the trade-show special: 30% off if they commit before tonight." : "Lui présenter l'offre spéciale salon : −30 % s'il s'engage avant ce soir."), action: () => {
         erreur((EN ? "30% discount beyond your authority and false urgency at the show." : "Remise de 30 % hors délégation et fausse urgence sur le salon."), "negociation");
-        finir("parti", `Parti · ${v.nom}`, "etq-ko", (EN ? "Hard selling" : "Vente forcée"), "ko", (EN ? "The visitor walks away, embarrassed." : "Le visiteur s'éloigne, gêné."));
+        finir("parti", T(`Parti · ${v.nom}`, `Left · ${v.nom}`), "etq-ko", (EN ? "Hard selling" : "Vente forcée"), "ko", (EN ? "The visitor walks away, embarrassed." : "Le visiteur s'éloigne, gêné."));
       } }
     ])
   });
@@ -4475,7 +4475,7 @@ function aborderVisiteur(n, p) {
               interlocuteur: inter, canal: (EN ? "Trade show" : "Salon"), confiance, focus: p.mesh,
               signal: (EN ? `<strong>Body language:</strong> ${pronomVisiteur(v)} glances towards the neighbouring stand.` : `<strong>Non-verbal :</strong> ${pronomVisiteur(v)} jette un œil vers le stand voisin.`),
               texte: (EN ? "“Hmm… that's not really my concern. I'll carry on with my visit, thanks.”" : "« Hmm… ce n'est pas vraiment ma préoccupation. Je vais continuer ma visite, merci. »"),
-              choix: [{ label: (EN ? "Say goodbye and move on to the next visitor" : "Le saluer et passer au visiteur suivant"), action: () => finir("parti", `Parti · ${v.nom}`, "etq-faible", (EN ? "Not convinced" : "Non convaincu"), "alerte", (EN ? "Argument not suited to their role." : "Argument non adapté à sa fonction.")) }]
+              choix: [{ label: (EN ? "Say goodbye and move on to the next visitor" : "Le saluer et passer au visiteur suivant"), action: () => finir("parti", T(`Parti · ${v.nom}`, `Left · ${v.nom}`), "etq-faible", (EN ? "Not convinced" : "Non convaincu"), "alerte", (EN ? "Argument not suited to their role." : "Argument non adapté à sa fonction.")) }]
             });
           }
         }
