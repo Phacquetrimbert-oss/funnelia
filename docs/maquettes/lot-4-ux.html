@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Maquette lot 4 · HUD et accueil</title>
+  <!-- Maquette statique : s'ouvre en double-cliquant, aucune dépendance réseau -->
+  <link rel="stylesheet" href="../../fonts/inter.css">
+  <style>
+    :root {
+      --marque: #0b1f3a; --accent: #fdba74; --accent-fort: #c2410c;
+      --prospect: #64748b; --lead: #2a78d6; --opportunite: #6250d6; --client: #15803d;
+      --fond: #f1f5f9; --blanc: #fff; --texte: #0f172a; --gris: #64748b; --bord: #e2e8f0;
+      --c1: #0e7490; --c2: #7c3aed; --c3: #c2410c;
+      --ombre: 0 10px 30px rgba(15, 23, 42, .14), 0 2px 6px rgba(15, 23, 42, .08);
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--fond); color: var(--texte); font: 15px/1.55 Inter, system-ui, sans-serif; }
+    main { max-width: 1180px; margin: 0 auto; padding: 32px 16px 80px; }
+    h1 { font-size: 30px; margin: 0 0 4px; letter-spacing: -.01em; }
+    h2 { font-size: 22px; margin: 56px 0 6px; padding-top: 18px; border-top: 1px solid var(--bord); }
+    h3 { font-size: 16px; margin: 22px 0 6px; }
+    p { margin: 6px 0 10px; max-width: 78ch; }
+    .chapeau { color: var(--gris); font-size: 16px; }
+    .etiquette { display: inline-block; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; padding: 3px 8px; border-radius: 6px; background: var(--marque); color: #fff; }
+    kbd { font: 700 12px Inter, sans-serif; background: #fff; border: 1px solid #cbd5e1; border-bottom-width: 2px; border-radius: 5px; padding: 1px 6px; color: var(--texte); }
+    .grille2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    @media (max-width: 860px) { .grille2 { grid-template-columns: 1fr; } }
+    figure { margin: 0; }
+    figcaption { font-size: 13px; color: var(--gris); margin-top: 6px; }
+    .capture { width: 100%; border-radius: 10px; box-shadow: var(--ombre); display: block; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; background: #fff; border-radius: 10px; overflow: hidden; box-shadow: var(--ombre); }
+    th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--bord); vertical-align: top; }
+    th { background: #f8fafc; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; color: var(--gris); }
+    td.num { font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .mieux { color: var(--client); font-weight: 700; }
+    .note { background: #fff7ed; border-left: 4px solid var(--accent-fort); padding: 10px 14px; border-radius: 8px; font-size: 14px; }
+
+    /* ---------- Sélecteur de couches ---------- */
+    .couches { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 12px; }
+    .couches button { font: 600 14px Inter, sans-serif; border: 1px solid var(--bord); background: #fff; border-radius: 999px; padding: 7px 14px; cursor: pointer; display: flex; gap: 8px; align-items: center; }
+    .couches button[aria-pressed="true"] { background: var(--marque); color: #fff; border-color: var(--marque); }
+    .pastille-c { width: 10px; height: 10px; border-radius: 50%; }
+
+    /* ---------- Écran de jeu simulé ---------- */
+    .ecran { position: relative; aspect-ratio: 1400 / 850; border-radius: 12px; overflow: hidden; box-shadow: var(--ombre); background: #333 url(img/fond-plateau.jpg) center / cover; container-type: inline-size; }
+    .ecran * { font-size: max(9px, 1.05cqi); }
+    .ecran [data-couche] { transition: opacity .25s; }
+    .ecran:not(.voir-2) [data-couche="2"], .ecran:not(.voir-3) [data-couche="3"] { opacity: 0; pointer-events: none; }
+    /* CRM ouvert : la couche 1 se décale, la couche 2 se met en retrait (sauf didacticiel et KPI) */
+    .ecran.voir-3 .h-droite { right: 30%; }
+    .ecran.voir-3 #r2 { right: 29%; }
+    .ecran.voir-3 .cible, .ecran.voir-3 .notifs, .ecran.voir-3 .marqueur, .ecran.voir-3 .aide-touches { opacity: 0; }
+    .repere { position: absolute; width: 2.1cqi; height: 2.1cqi; min-width: 18px; min-height: 18px; border-radius: 50%; color: #fff; font-weight: 800; display: grid; place-items: center; box-shadow: 0 0 0 2px #fff; z-index: 20; font-size: max(10px, 1cqi) !important; }
+    .repere.c1 { background: var(--c1); } .repere.c2 { background: var(--c2); } .repere.c3 { background: var(--c3); }
+
+    .h-objectif { position: absolute; left: 1.4%; top: 2.2%; width: 25%; background: rgba(255, 255, 255, .94); border-radius: .8cqi; padding: .8cqi 1cqi; box-shadow: var(--ombre); border-top: .3cqi solid #0e7490; }
+    .h-objectif .ligne1 { display: flex; gap: .6cqi; align-items: center; font-weight: 700; }
+    .h-objectif .etape { background: #0e7490; color: #fff; font-size: .8cqi !important; padding: .15cqi .5cqi; border-radius: .4cqi; letter-spacing: .05em; }
+    .h-objectif .mission { color: #334155; margin: .4cqi 0 .5cqi; line-height: 1.35; }
+    .h-objectif .compteur { display: flex; justify-content: space-between; font-weight: 700; }
+    .jauge { height: .55cqi; background: #e2e8f0; border-radius: 1cqi; margin-top: .35cqi; overflow: hidden; }
+    .jauge i { display: block; height: 100%; width: 25%; background: #0e7490; border-radius: 1cqi; }
+    .h-droite { position: absolute; right: 1.4%; top: 2.2%; display: flex; gap: .5cqi; align-items: center; }
+    .pilule { background: rgba(255, 255, 255, .94); border-radius: .7cqi; padding: .45cqi .8cqi; font-weight: 700; box-shadow: var(--ombre); white-space: nowrap; }
+    .pips { display: inline-flex; gap: .25cqi; margin-left: .4cqi; vertical-align: middle; }
+    .pips i { width: .7cqi; height: .7cqi; border-radius: 50%; background: #cbd5e1; display: inline-block; }
+    .pips i.ko { background: #b91c1c; }
+    .viseur { position: absolute; left: 50%; top: 50%; width: .5cqi; height: .5cqi; background: #fff; border-radius: 50%; transform: translate(-50%, -50%); box-shadow: 0 0 0 1px rgba(0, 0, 0, .35); }
+    .invite { position: absolute; left: 50%; top: 54%; transform: translateX(-50%); display: flex; gap: .6cqi; align-items: center; background: rgba(11, 31, 58, .82); color: #fff; padding: .35cqi .9cqi .35cqi .35cqi; border-radius: 99px; font-weight: 600; white-space: nowrap; }
+    .invite b { background: var(--accent); color: var(--marque); border-radius: .4cqi; padding: .1cqi .5cqi; }
+    .etage { position: absolute; left: 1.4%; bottom: 2.5%; background: rgba(11, 31, 58, .82); color: #fff; border-radius: .7cqi; padding: .45cqi .8cqi; font-weight: 700; display: flex; gap: .6cqi; align-items: center; }
+    .etage span { color: #cbd5e1; font-weight: 500; }
+    .aide-touches { position: absolute; right: 1.4%; bottom: 2.5%; color: #fff; text-shadow: 0 1px 3px rgba(0, 0, 0, .6); font-weight: 600; display: flex; gap: 1cqi; }
+    .aide-touches b { background: rgba(255, 255, 255, .9); color: var(--marque); border-radius: .35cqi; padding: 0 .4cqi; text-shadow: none; }
+
+    .cible { position: absolute; left: 50%; top: 9.5%; transform: translateX(-50%); display: flex; gap: .6cqi; align-items: center; background: rgba(11, 31, 58, .72); color: #fff; padding: .35cqi 1cqi; border-radius: 99px; font-weight: 600; }
+    .cible .fl { color: var(--accent); font-weight: 800; }
+    .marqueur { position: absolute; left: 49.6%; top: 41%; transform: translate(-50%, -100%); color: var(--marque); background: var(--accent); font-weight: 800; padding: .15cqi .5cqi; border-radius: .4cqi; }
+    .marqueur::after { content: ""; position: absolute; left: 50%; bottom: -.5cqi; transform: translateX(-50%); border: .5cqi solid transparent; border-top-color: var(--accent); border-bottom: 0; }
+    .notifs { position: absolute; right: 1.4%; top: 8.5%; width: 24%; display: flex; flex-direction: column; gap: .5cqi; }
+    .notif { background: rgba(255, 255, 255, .96); border-radius: .7cqi; padding: .55cqi .8cqi; box-shadow: var(--ombre); border-left: .3cqi solid var(--client); line-height: 1.35; }
+    .notif small { display: block; color: var(--gris); font-size: .85cqi !important; }
+    .notif.fil { border-left-color: #94a3b8; opacity: .85; }
+    .kpi-pop { position: absolute; left: 1.4%; top: 21%; background: #dcfce7; color: #14532d; border-radius: .7cqi; padding: .4cqi .8cqi; font-weight: 700; box-shadow: var(--ombre); }
+    .coach { position: absolute; left: 50%; bottom: 13%; transform: translateX(-50%); width: 34%; background: var(--marque); color: #f8fafc; border-radius: .9cqi; padding: .8cqi 1cqi; box-shadow: var(--ombre); line-height: 1.4; }
+    .coach .tete { display: flex; justify-content: space-between; color: var(--accent); font-weight: 800; text-transform: uppercase; letter-spacing: .06em; font-size: .8cqi !important; }
+    .coach kbd { font-size: .85cqi !important; background: rgba(255, 255, 255, .15); color: #fff; border-color: rgba(255, 255, 255, .3); }
+    .lieu { position: absolute; left: 50%; bottom: 25%; transform: translateX(-50%); color: #fff; text-shadow: 0 1px 4px rgba(0, 0, 0, .6); font-weight: 700; display: flex; gap: .7cqi; align-items: center; }
+    .lieu b { background: var(--accent); color: var(--marque); padding: .2cqi .5cqi; border-radius: .4cqi; text-shadow: none; }
+
+    .voile { position: absolute; inset: 0; background: rgba(11, 31, 58, .25); }
+    .panneau { position: absolute; right: 1.4%; top: 2.2%; bottom: 2.5%; width: 27%; background: #fff; border-radius: .9cqi; box-shadow: var(--ombre); padding: 1cqi 1.1cqi; display: flex; flex-direction: column; gap: .8cqi; overflow: hidden; }
+    .panneau .titre { font-weight: 800; font-size: 1.25cqi !important; display: flex; justify-content: space-between; }
+    .panneau .titre span { font-weight: 600; color: var(--gris); }
+    .onglets { display: flex; gap: .3cqi; flex-wrap: wrap; }
+    .onglets span { padding: .25cqi .6cqi; border-radius: .5cqi; background: #f1f5f9; font-weight: 600; color: #334155; }
+    .onglets span.actif { background: var(--marque); color: #fff; }
+    .tunnel { display: grid; grid-template-columns: repeat(3, 1fr); gap: .4cqi; text-align: center; }
+    .tunnel div { background: #f1f5f9; border-radius: .5cqi; padding: .4cqi; }
+    .tunnel b { display: block; font-size: 1.5cqi !important; }
+    .kpis { display: grid; grid-template-columns: 1fr 1fr; gap: .4cqi; }
+    .kpis div { border: 1px solid var(--bord); border-radius: .5cqi; padding: .4cqi .6cqi; }
+    .kpis small { display: block; color: var(--gris); font-size: .85cqi !important; }
+    .taches div { display: flex; gap: .5cqi; padding: .35cqi 0; border-bottom: 1px solid var(--bord); }
+    .taches div::before { content: "○"; color: var(--gris); }
+    .taches div.ok::before { content: "✓"; color: var(--client); font-weight: 800; }
+    .outils { margin-top: auto; display: grid; grid-template-columns: repeat(3, 1fr); gap: .4cqi; }
+    .outils span { text-align: center; padding: .4cqi; border-radius: .5cqi; border: 1px solid var(--bord); font-weight: 600; }
+    .outils b { color: var(--accent-fort); }
+
+    /* ---------- Légende des couches ---------- */
+    .legende { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-top: 16px; }
+    @media (max-width: 860px) { .legende { grid-template-columns: 1fr; } }
+    .carte { background: #fff; border-radius: 12px; padding: 14px 16px; box-shadow: var(--ombre); border-top: 4px solid var(--c); }
+    .carte h3 { margin: 0 0 4px; display: flex; gap: 8px; align-items: center; }
+    .carte p { font-size: 14px; color: #334155; }
+    .carte ol { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
+    .carte li { margin: 3px 0; }
+
+    /* ---------- Accueil simulé ---------- */
+    .accueil { background: #fff; border-radius: 14px; box-shadow: var(--ombre); padding: 22px 26px; }
+    .a-barre { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding-bottom: 14px; border-bottom: 1px solid var(--bord); flex-wrap: wrap; }
+    .a-marque { display: flex; gap: 10px; align-items: center; font-weight: 800; font-size: 18px; }
+    .a-marque svg { width: 34px; height: 34px; }
+    .a-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+    .bt { font: 600 13px Inter, sans-serif; border: 1px solid var(--bord); background: #fff; border-radius: 8px; padding: 6px 11px; }
+    .bt.noir { background: var(--marque); color: #fff; border-color: var(--marque); }
+    .a-hero { display: grid; grid-template-columns: 1.35fr 1fr; gap: 26px; padding: 22px 0 18px; align-items: center; }
+    @media (max-width: 860px) { .a-hero { grid-template-columns: 1fr; } }
+    .a-hero h3 { font-size: 30px; margin: 0 0 6px; letter-spacing: -.01em; }
+    .a-hero p { color: #334155; font-size: 16px; }
+    .a-jouer { background: #f8fafc; border: 1px solid var(--bord); border-radius: 12px; padding: 16px; }
+    .a-jouer .sur { font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--gris); }
+    .a-jouer .nom { font-size: 20px; font-weight: 800; margin: 2px 0; }
+    .gros { display: block; width: 100%; margin-top: 12px; font: 800 17px Inter, sans-serif; background: var(--marque); color: #fff; border: 0; border-radius: 10px; padding: 14px; box-shadow: 0 0 0 3px #fff, 0 0 0 5px var(--accent-fort); }
+    .a-profil { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; font-size: 14px; margin-top: 10px; color: #334155; }
+    .a-profil .tag { background: #fff; border: 1px solid var(--bord); border-radius: 99px; padding: 3px 10px; font-weight: 600; }
+    .a-profil .tag.defaut { border-style: dashed; }
+    .a-profil a { color: var(--lead); font-weight: 600; }
+    .a-etapes { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+    @media (max-width: 860px) { .a-etapes { grid-template-columns: 1fr 1fr; } }
+    .a-etape { border: 1px solid var(--bord); border-radius: 10px; padding: 10px 12px; border-top: 4px solid var(--c); font-size: 13px; }
+    .a-etape b { display: block; font-size: 15px; }
+    .a-etape small { color: var(--gris); display: block; }
+    .a-etape .etoiles { color: #d97706; letter-spacing: 2px; }
+    .a-suivi { display: flex; gap: 6px; margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--bord); flex-wrap: wrap; align-items: center; font-size: 14px; color: var(--gris); }
+
+    /* ---------- Frise des 60 premières secondes ---------- */
+    .frise { position: relative; margin: 18px 0 0; padding-left: 26px; }
+    .frise::before { content: ""; position: absolute; left: 8px; top: 6px; bottom: 6px; width: 3px; border-radius: 2px; background: linear-gradient(var(--prospect), var(--lead), var(--opportunite), var(--client)); }
+    .pas { position: relative; display: grid; grid-template-columns: 76px 1fr 1fr; gap: 14px; padding: 10px 0; border-bottom: 1px dashed var(--bord); }
+    @media (max-width: 760px) { .pas { grid-template-columns: 64px 1fr; } .pas .avant { grid-column: 2; } }
+    .pas::before { content: ""; position: absolute; left: -23px; top: 15px; width: 11px; height: 11px; border-radius: 50%; background: #fff; border: 3px solid var(--marque); }
+    .pas .t { font-weight: 800; font-variant-numeric: tabular-nums; }
+    .pas .apres { font-weight: 600; }
+    .pas .avant { color: var(--gris); font-size: 14px; }
+    .pas .avant::before { content: "Avant : "; font-weight: 700; }
+  </style>
+</head>
+<body>
+<main>
+  <span class="etiquette">Lot 4 · maquette à valider</span>
+  <h1>Interface : HUD en trois couches, accueil simplifié</h1>
+  <p class="chapeau">Rien n'est encore codé. Cette page montre ce que je propose de changer dans l'interface, avec l'interface actuelle à côté pour comparer. Les mécaniques de jeu, les missions, les sauvegardes et les raccourcis clavier ne changent pas.</p>
+
+  <h2>1. Le problème, en chiffres</h2>
+  <div class="grille2">
+    <figure><img class="capture" src="img/hud-actuel.jpg" alt="HUD actuel en mission"><figcaption>HUD actuel, au début de la mission « Captation ». Tout est affiché en même temps.</figcaption></figure>
+    <figure><img class="capture" src="img/accueil-actuel.jpg" alt="Accueil actuel"><figcaption>Accueil actuel : un long texte, puis un champ obligatoire à remplir avant de pouvoir jouer.</figcaption></figure>
+  </div>
+  <h3>Mesures relevées sur la version actuelle (navigateur sans affichage, fenêtre de 1400 × 850)</h3>
+  <table>
+    <thead><tr><th>Mesure</th><th>Aujourd'hui</th><th>Objectif du lot 4</th></tr></thead>
+    <tbody>
+      <tr><td>Éléments du HUD visibles en permanence en mission</td><td class="num">15 + 3 KPI + plan + boussole</td><td class="num mieux">5 (couche 1)</td></tr>
+      <tr><td>Boutons dans la barre d'outils du HUD</td><td class="num">7</td><td class="num mieux">1 (menu) ; les raccourcis restent</td></tr>
+      <tr><td>Mots sur l'accueil</td><td class="num">715</td><td class="num mieux">≈ 150</td></tr>
+      <tr><td>Hauteur de l'accueil</td><td class="num">1 609 px (≈ 2 écrans)</td><td class="num mieux">tient dans 1 écran jusqu'aux étapes</td></tr>
+      <tr><td>Boutons et champs sur l'accueil</td><td class="num">23</td><td class="num mieux">≈ 12</td></tr>
+      <tr><td>Saisie obligatoire avant de jouer</td><td class="num">oui (portefeuille)</td><td class="num mieux">non (valeur par défaut modifiable)</td></tr>
+      <tr><td>Mots sur le briefing</td><td class="num">596</td><td class="num mieux">≈ 120 visibles, le reste dépliable</td></tr>
+      <tr><td>Messages qui apparaissent en même temps au démarrage d'une mission</td><td class="num">5 (animation, coach, astuce Tab, fil, nom du lieu)</td><td class="num mieux">2, l'un après l'autre</td></tr>
+    </tbody>
+  </table>
+  <p class="note">Pour le jury : un joueur qui découvre le jeu ne peut lire qu'une information à la fois. Aujourd'hui, il reçoit tout dès la première seconde. Le principe retenu : <strong>afficher en permanence ce qui sert à chaque instant, afficher le reste au moment où il devient utile, et ranger ce qui sert rarement derrière une touche</strong>.</p>
+
+  <h2>2. Le HUD en trois couches</h2>
+  <p>Utilisez les boutons pour superposer les couches. Les pastilles numérotées renvoient à la légende sous l'image.</p>
+  <div class="couches" role="group" aria-label="Couches affichées">
+    <button type="button" data-voir="1" aria-pressed="true"><span class="pastille-c" style="background:var(--c1)"></span>Couche 1 · permanente</button>
+    <button type="button" data-voir="2" aria-pressed="false"><span class="pastille-c" style="background:var(--c2)"></span>+ Couche 2 · contextuelle</button>
+    <button type="button" data-voir="3" aria-pressed="false"><span class="pastille-c" style="background:var(--c3)"></span>+ Couche 3 · à la demande (Tab)</button>
+  </div>
+
+  <div class="ecran" id="ecran">
+    <!-- Couche 1 -->
+    <div class="h-objectif" data-couche="1">
+      <div class="ligne1"><span class="etape">ÉTAPE 2</span>Captation · Prospect → Lead</div>
+      <div class="mission">Qualifiez 8 leads entrants d'ici jeudi 18 h.</div>
+      <div class="compteur"><span>Leads qualifiés</span><span>2 / 8</span></div>
+      <div class="jauge"><i></i></div>
+    </div>
+    <span class="repere c1" style="left:26.6%;top:1.2%">1</span>
+    <div class="h-droite" data-couche="1">
+      <span class="pilule">Lun. 10:40 → Jeu. 18:00</span>
+      <span class="pilule">Erreurs<span class="pips"><i class="ko"></i><i></i><i></i><i></i><i></i></span></span>
+      <span class="pilule">☰ Menu <kbd style="font-size:.8cqi">Échap</kbd></span>
+    </div>
+    <span class="repere c1" id="r2" style="right:0.2%;top:0.4%">2</span>
+    <div class="viseur" data-couche="1"></div>
+    <div class="invite" data-couche="1"><b>E</b>Parler à Maxime Duval</div>
+    <span class="repere c1" style="left:57%;top:53%">3</span>
+    <div class="etage" data-couche="1">R+1 <span>Plateau commercial</span></div>
+    <span class="repere c1" style="left:14.6%;bottom:2%">4</span>
+    <div class="aide-touches" data-couche="1"><span><b>Tab</b> CRM</span><span><b>P</b> plan</span><span><b>H</b> aide</span></div>
+    <span class="repere c1" data-retrait style="right:0.4%;bottom:6.8%">5</span>
+
+    <!-- Couche 2 -->
+    <div class="cible" data-couche="2"><span class="fl">↑</span>Prochaine action : rappeler la demande de démo · 12 m</div>
+    <span class="repere c2" data-retrait style="left:31.5%;top:9.2%">6</span>
+    <div class="marqueur" data-couche="2">!</div>
+    <div class="kpi-pop" data-couche="2">RDV obtenus 0 → 1</div>
+    <span class="repere c2" style="left:12.4%;top:20%">7</span>
+    <div class="notifs" data-couche="2">
+      <div class="notif">Lead qualifié : Nordel SA<small>+1 lead · la jauge avance</small></div>
+      <div class="notif fil">Sandrine M. : « Le salon Arche est libre à 14 h. »<small>Fil de l'entreprise</small></div>
+    </div>
+    <span class="repere c2" data-retrait style="right:25.6%;top:9%">8</span>
+    <div class="coach" data-couche="2"><div class="tete"><span>Didacticiel · 2 / 4</span><span>Passer</span></div>Approchez-vous d'un collègue et appuyez sur <kbd>E</kbd> pour échanger avec lui.</div>
+    <span class="repere c2" style="left:32%;bottom:20%">9</span>
+
+    <!-- Couche 3 -->
+    <div class="voile" data-couche="3"></div>
+    <div class="panneau" data-couche="3">
+      <div class="titre">CRM de la mission <span>Tab pour fermer</span></div>
+      <div class="onglets"><span class="actif">Mission</span><span>Contacts</span><span>KPI</span><span>Tâches</span></div>
+      <div class="tunnel"><div><b>6</b>entrants</div><div><b>2</b>leads</div><div><b>1</b>RDV</div></div>
+      <div class="kpis">
+        <div><small>À traiter</small><b>4</b></div>
+        <div><small>Délai moyen de rappel</small><b>1 h 20</b></div>
+        <div><small>Progression tunnel</small><b>Prospect · 24/100</b></div>
+        <div><small>Réseau interne</small><b>50 / 100</b></div>
+      </div>
+      <div class="taches"><div class="ok">Paramétrer le formulaire de démo</div><div class="ok">Qualifier Nordel SA</div><div>Rappeler Atelier Brume (demande à 9 h 52)</div><div>Qualifier 5 autres leads</div></div>
+      <div class="outils"><span><b>K</b> KPI</span><span><b>O</b> Équipe</span><span><b>G</b> Guide</span><span><b>F</b> Accélérer</span><span><b>M</b> Son</span><span><b>H</b> Aide</span></div>
+    </div>
+    <span class="repere c3" style="right:28.6%;top:45%">10</span>
+  </div>
+
+  <div class="legende">
+    <div class="carte" style="--c:var(--c1)">
+      <h3><span class="pastille-c" style="background:var(--c1)"></span>Couche 1 · permanente</h3>
+      <p>Ce qui sert à chaque seconde. Petite, dans les coins, sans masquer la scène.</p>
+      <ol>
+        <li><strong>Objectif</strong> : une phrase, un compteur, une jauge (remplace la carte de 10 lignes).</li>
+        <li><strong>Temps restant, erreurs, menu</strong> : la barre de 7 boutons devient un seul menu.</li>
+        <li><strong>Viseur et action possible</strong>, au centre (inchangés).</li>
+        <li><strong>Étage</strong> : la mini-carte n'est plus permanente, elle s'ouvre avec <kbd>P</kbd>.</li>
+        <li><strong>Rappel des 3 touches utiles</strong>, discret ; masqué après la première mission.</li>
+      </ol>
+    </div>
+    <div class="carte" style="--c:var(--c2)">
+      <h3><span class="pastille-c" style="background:var(--c2)"></span>Couche 2 · contextuelle</h3>
+      <p>Apparaît quand c'est utile, puis s'efface toute seule.</p>
+      <ol start="6">
+        <li><strong>Prochaine action et marqueur</strong> : remplace la boussole permanente. Affichés seulement quand une action précise attend le joueur.</li>
+        <li><strong>KPI qui change</strong> : s'affiche 4 s sous l'objectif. Les 3 pastilles KPI permanentes disparaissent.</li>
+        <li><strong>Une seule pile de messages</strong> : toasts et fil de l'entreprise fusionnés, 2 messages au plus à l'écran.</li>
+        <li><strong>Didacticiel</strong> : au centre, en bas, près de l'endroit où l'on regarde.</li>
+      </ol>
+    </div>
+    <div class="carte" style="--c:var(--c3)">
+      <h3><span class="pastille-c" style="background:var(--c3)"></span>Couche 3 · à la demande</h3>
+      <p>Ce qui sert à réfléchir, pas à se déplacer. Ouvert avec <kbd>Tab</kbd>, le temps est déjà figé pendant la lecture.</p>
+      <ol start="10">
+        <li><strong>CRM de la mission</strong> : tunnel détaillé, KPI, tâches, progression, plus les raccourcis (K, O, G, F, M, H) qui sortent de la barre du haut.</li>
+      </ol>
+      <p style="margin-top:8px">Quand le CRM est ouvert, la prochaine action, les messages et le rappel des touches se mettent en retrait ; le didacticiel et les KPI restent visibles.</p>
+      <p>Les touches K, O, G, H, M, F, P et Échap fonctionnent exactement comme aujourd'hui.</p>
+    </div>
+  </div>
+
+  <h2>3. Accueil simplifié</h2>
+  <p>Un seul gros bouton pour jouer. Le profil se résume à une ligne et le portefeuille a une valeur par défaut, donc on peut jouer sans rien saisir. Le long texte de présentation passe dans l'aide (« Comment ça marche ? »). Le suivi (progression, badges, classement, historique) reste disponible en bas, inchangé.</p>
+  <div class="accueil">
+    <div class="a-barre">
+      <div class="a-marque"><svg viewBox="0 0 48 48" aria-hidden="true"><rect width="48" height="48" rx="11" fill="#0b1f3a"/><path d="M8 10h32l-3.2 6.5H11.2z" fill="#94a3b8"/><path d="M12.4 18.5h23.2l-3.2 6.5H15.6z" fill="#3b82f6"/><path d="M16.8 27h14.4l-3.2 6.5h-8z" fill="#8b5cf6"/><path d="M21 35.5h6l-1.2 4.5h-3.6z" fill="#22c55e"/></svg>Funnelia</div>
+      <div class="a-actions"><span class="bt noir">FR</span><span class="bt">EN</span><span class="bt">Comment ça marche ?</span><span class="bt">Guide du commercial</span><span class="bt">⚙ Paramètres</span></div>
+    </div>
+    <div class="a-hero">
+      <div>
+        <h3>De prospect à client</h3>
+        <p>Vous êtes commercial chez Veltis, à La Défense. Faites avancer chaque contact dans le tunnel de conversion : <strong>Prospect → Lead → Opportunité → Client</strong>.</p>
+        <p>Parlez à vos collègues (<kbd>E</kbd>), pilotez votre CRM (<kbd>Tab</kbd>) et évitez les freins à la conversion.</p>
+        <div class="a-profil">Votre profil :
+          <span class="tag">Terrain</span><span class="tag">Standard</span><span class="tag defaut" title="Valeur par défaut, modifiable">50 clients · par défaut</span><a href="#profil">Modifier</a>
+        </div>
+      </div>
+      <div class="a-jouer">
+        <div class="sur">Étape recommandée · 1 / 4</div>
+        <div class="nom">Prospection</div>
+        <div style="color:#334155;font-size:14px">Inconnu → Prospect</div>
+        <button class="gros" type="button">Jouer</button>
+        <div style="text-align:center;margin-top:8px;font-size:13px;color:var(--gris)">ou choisissez une étape ci-dessous</div>
+      </div>
+    </div>
+    <div class="a-etapes">
+      <div class="a-etape" style="--c:#1e3a8a"><small>Étape 1</small><b>Prospection</b><small>Inconnu → Prospect</small><span class="etoiles">☆☆☆</span></div>
+      <div class="a-etape" style="--c:#0e7490"><small>Étape 2</small><b>Captation</b><small>Prospect → Lead</small><span class="etoiles">☆☆☆</span></div>
+      <div class="a-etape" style="--c:#047857"><small>Étape 3</small><b>Qualification</b><small>Lead → Opportunité</small><span class="etoiles">☆☆☆</span></div>
+      <div class="a-etape" style="--c:#92400e"><small>Étape 4</small><b>Closing</b><small>Opportunité → Client</small><span class="etoiles">☆☆☆</span></div>
+      <div class="a-etape" style="--c:#6b2140"><small>Bonus</small><b>Fidélisation</b><small>Client → Client fidèle</small><span class="etoiles">☆☆☆</span></div>
+    </div>
+    <div class="a-suivi">Votre suivi : <span class="bt">Progression</span><span class="bt">Badges et certificat</span><span class="bt">Classement</span><span class="bt">Historique</span><span class="bt">Tableau de bord</span></div>
+  </div>
+  <h3>La valeur par défaut du portefeuille</h3>
+  <p>Le champ reste présent dans « Modifier ». Il est simplement pré-rempli avec <strong>50 clients</strong>, signalé « par défaut » tant que le joueur ne l'a pas changé. Le bilan et l'export CSV indiquent si la valeur est la vraie ou celle par défaut, ce qui garde les calculs de CLV honnêtes.</p>
+  <p><strong>Sauvegardes :</strong> un joueur qui a déjà saisi son portefeuille garde sa valeur. La valeur par défaut ne s'applique que lorsque la sauvegarde n'en contient aucune, et aucune clé localStorage n'est renommée.</p>
+
+  <h2>4. Les 60 premières secondes</h2>
+  <p>Objectif : en moins d'une minute, le joueur a bougé, parlé à quelqu'un et vu sa jauge avancer une fois. À chaque moment, il ne reçoit qu'une consigne.</p>
+  <div class="frise">
+    <div class="pas"><span class="t">0 s</span><span class="apres">Choix de la langue, puis « Commencer » (inchangé ; écran sauté si la langue est déjà connue).</span><span class="avant">identique.</span></div>
+    <div class="pas"><span class="t">≈ 5 s</span><span class="apres">Accueil : un clic sur « Jouer », sans rien saisir.</span><span class="avant">lecture du texte, champ portefeuille obligatoire, puis choix d'une carte d'étape.</span></div>
+    <div class="pas"><span class="t">≈ 10 s</span><span class="apres">Briefing court : contexte en 2 lignes, mission, 3 consignes. Le reste (critères, profil, progression) est replié sous « Détails ». Bouton « Démarrer ».</span><span class="avant">596 mots sur 2 écrans.</span></div>
+    <div class="pas"><span class="t">≈ 20 s</span><span class="apres">Animation de l'étape (3,6 s), qu'on peut passer avec n'importe quelle touche. Puis seulement la couche 1, plus la consigne n° 1 du didacticiel.</span><span class="avant">animation, coach, astuce Tab, fil et nom du lieu en même temps.</span></div>
+    <div class="pas"><span class="t">≈ 30 s</span><span class="apres">Le joueur se déplace. Le didacticiel passe à « <kbd>E</kbd> pour parler » et un marqueur désigne le collègue utile pour la mission.</span><span class="avant">pas de cible désignée : le joueur cherche.</span></div>
+    <div class="pas"><span class="t">≈ 45 s</span><span class="apres">Premier échange, puis « <kbd>Tab</kbd> pour ouvrir le CRM ». Le fil de l'entreprise commence à s'afficher seulement à ce moment-là.</span><span class="avant">le fil s'affiche dès le départ.</span></div>
+    <div class="pas"><span class="t">≈ 60 s</span><span class="apres">Première action dans le CRM : la jauge avance, un message le confirme, l'objectif affiche 1 / 8.</span><span class="avant">identique, mais noyé parmi les autres informations.</span></div>
+  </div>
+
+  <h2>5. Ce que je propose de faire, dans l'ordre</h2>
+  <table>
+    <thead><tr><th>#</th><th>Étape</th><th>Jouable après ?</th></tr></thead>
+    <tbody>
+      <tr><td>4a</td><td>Portefeuille par défaut (50, signalé « par défaut », mentionné dans le bilan et le CSV) + profil résumé en une ligne sur l'accueil</td><td>oui</td></tr>
+      <tr><td>4b</td><td>Accueil simplifié : bouton « Jouer », texte de présentation déplacé dans l'aide, étapes en ligne</td><td>oui</td></tr>
+      <tr><td>4c</td><td>Briefing court avec « Détails » repliables</td><td>oui</td></tr>
+      <tr><td>4d</td><td>HUD couche 1 : carte d'objectif compacte, barre d'outils réduite à un menu, mini-carte sur <kbd>P</kbd></td><td>oui</td></tr>
+      <tr><td>4e</td><td>HUD couche 2 : prochaine action et marqueur, KPI temporaires, pile de messages unique</td><td>oui</td></tr>
+      <tr><td>4f</td><td>HUD couche 3 : le panneau CRM reprend KPI, progression et raccourcis</td><td>oui</td></tr>
+      <tr><td>4g</td><td>60 premières secondes : messages échelonnés, animation passable, didacticiel avec cible</td><td>oui</td></tr>
+    </tbody>
+  </table>
+  <p>Chaque étape fait l'objet d'un commit sur la branche <code>lot-4-ux</code>, avec les textes FR et EN modifiés ensemble et une vérification à 1400 × 850 et sur tablette.</p>
+</main>
+<script>
+  // Superposition des couches de la maquette
+  const ecran = document.getElementById("ecran");
+  document.querySelectorAll("[data-voir]").forEach(b => b.addEventListener("click", () => {
+    const n = +b.dataset.voir;
+    ecran.classList.toggle("voir-2", n >= 2);
+    ecran.classList.toggle("voir-3", n >= 3);
+    document.querySelectorAll("[data-voir]").forEach(x => x.setAttribute("aria-pressed", String(+x.dataset.voir <= n)));
+  }));
+  // Les pastilles numérotées suivent la visibilité de leur couche
+  const majReperes = () => document.querySelectorAll(".repere").forEach(r => {
+    const c = r.classList.contains("c3") ? 3 : r.classList.contains("c2") ? 2 : 1;
+    const visible = (c === 1 || ecran.classList.contains("voir-" + c)) && !(r.hasAttribute("data-retrait") && ecran.classList.contains("voir-3"));
+    r.style.opacity = visible ? 1 : 0;
+  });
+  new MutationObserver(majReperes).observe(ecran, { attributes: true });
+  majReperes();
+</script>
+</body>
+</html>
