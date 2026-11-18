@@ -77,20 +77,20 @@ flowchart LR
 
 ## 5. Performances avant / après
 
-Mesures sur la machine du développeur (Safari, banc automatique Maj + F3) pour l'étape 0 et le lot 2, et en Chrome sans écran (compteurs exacts, FPS non significatifs) pour le lot 3. Détail : [performances.md](performances.md).
+Mesures sur la machine du développeur avec le banc automatique (Maj + F3), qualité par qualité et étage par étage. Détail : [performances.md](performances.md).
 
 | Mesure (étage R+1, qualité Moyen sauf mention) | Avant (étape 0) | Après lot 2 | Après lot 3 |
 |---|---|---|---|
-| Appels de dessin par image | 1 177 | 380 | 267 en moyenne (296 au maximum) |
-| Triangles rendus par image | 704 290 | 184 768 | 129 536 |
-| Matériaux | 293 | 133 | 123 |
-| Images par seconde, Moyen | 58 – 60 | 60 (plafond de l'écran) | non remesuré |
-| Images par seconde, Élevé | 43 – 46 | 59 – 60 | non remesuré |
-| Images par seconde, Ultra | 19 – 35 | 42 – 43 | non remesuré |
+| Appels de dessin par image | 1 177 | 380 | **259** |
+| Triangles rendus par image | 704 290 | 184 768 | **108 350** |
+| Matériaux | 293 | 133 | 121 |
+| Images par seconde, Moyen | 58 – 60 | 60 (plafond de l'écran) | 59,7 – 60 |
+| Images par seconde, Élevé | 43 – 46 | 59 – 60 | 57,6 – 59,9 |
+| Images par seconde, Ultra | 19 – 35 | 42 – 43 | 40,7 – 40,8 |
 | Un personnage | 33 objets, ≈ 16 900 triangles | idem | **1 appel de dessin, ≈ 2 000 triangles** |
 | Textures en mémoire | 134 → 299 (fuite) | 63 – 87, stable | stable |
 
-Cibles du cahier des charges, par étage : moins de 300 appels de dessin ✔ (lot 3), moins de 300 000 triangles ✔ (lot 2), 60 FPS en Moyen ✔ et au moins 45 FPS en Élevé ✔ (lot 2, à reconfirmer sur la machine de soutenance avec Maj + F3). Moins de 60 matériaux : non atteint (103 à 123), ce sont ceux du décor (écrans, affiches, sols).
+Cibles du cahier des charges, par étage : moins de 300 appels de dessin ✔, moins de 300 000 triangles ✔, 60 FPS en Moyen ✔ et au moins 45 FPS en Élevé ✔ (57,6 à 59,9). Moins de 60 matériaux : non atteint (103 à 121), ce sont ceux du décor (écrans, affiches, sols).
 
 ## 6. Pour la soutenance et les tests
 

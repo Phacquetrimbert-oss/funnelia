@@ -146,3 +146,38 @@ restent au-dessus de 60 : ce sont ceux du décor (écrans, affiches, textures de
 façade), pas des personnages, qui partagent tous un seul matériau.
 
 Textures en mémoire : +50 environ, une petite texture d'os par squelette animé (Three.js r128).
+
+## Mesure « après » lot 3 sur la machine du développeur (Maj + F3)
+
+| Qualité | Étage | FPS | ms/image | Draw calls | Triangles rendus | Meshes visibles | Triangles visibles | castShadow | Géométries uniques | Matériaux uniques | Textures | Programmes |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| faible | RDC | 44.9* | 22.3 | 199 | 87 308 | 234 | 125 962 | 31 | 232 | 107 | 101 | 44 |
+| faible | R+1 | 60.0 | 16.7 | 243 | 108 336 | 270 | 151 522 | 31 | 248 | 121 | 101 | 45 |
+| faible | R+2 | 60.0 | 16.7 | 227 | 81 461 | 229 | 114 988 | 30 | 224 | 103 | 116 | 45 |
+| moyen | RDC | 60.0 | 16.7 | 242 | 91 732 | 234 | 125 962 | 31 | 232 | 107 | 129 | 47 |
+| moyen | R+1 | 60.0 | 16.7 | 259 | 108 350 | 270 | 151 522 | 31 | 248 | 121 | 129 | 47 |
+| moyen | R+2 | 59.7 | 16.7 | 242 | 81 548 | 229 | 114 988 | 30 | 224 | 103 | 129 | 47 |
+| élevé | RDC | 58.5 | 17.1 | 243 | 91 650 | 234 | 125 962 | 31 | 232 | 107 | 129 | 47 |
+| élevé | R+1 | 57.6 | 17.4 | 258 | 108 467 | 270 | 151 522 | 31 | 248 | 121 | 129 | 47 |
+| élevé | R+2 | 59.9 | 16.7 | 242 | 81 447 | 229 | 114 988 | 30 | 224 | 103 | 129 | 47 |
+| ultra (SSAO) | RDC | 40.8 | 24.5 | 473 | 183 430 | 234 | 125 962 | 31 | 232 | 107 | 135 | 51 |
+| ultra (SSAO) | R+1 | 40.7 | 24.6 | 505 | 217 077 | 270 | 151 522 | 31 | 248 | 121 | 136 | 51 |
+| ultra (SSAO) | R+2 | 40.7 | 24.6 | 475 | 162 990 | 229 | 114 988 | 30 | 224 | 103 | 137 | 51 |
+
+\* Premier passage du banc : compilation des shaders et envoi des textures pendant la chauffe
+(même effet qu'à l'étape 0 et au lot 2 ; Moyen, mesuré juste après au même étage, tient 60 FPS).
+
+| | Avant (étape 0) | Après lot 2 | Après lot 3 |
+|---|---|---|---|
+| Moyen | 58 – 60 FPS, 965 – 1 177 draw calls | 60 FPS, 372 – 380 draw calls | **59,7 – 60 FPS, 242 – 259 draw calls** |
+| Élevé | 43 – 46 FPS, 1 893 – 2 335 draw calls | 59 – 60 FPS, 373 – 379 draw calls | **57,6 – 59,9 FPS, 242 – 258 draw calls** |
+| Ultra | 19 – 35 FPS | 42 – 43 FPS | **40,7 – 40,8 FPS** |
+| Triangles rendus (Moyen) | 549 745 – 704 290 | 178 221 – 187 933 | **81 548 – 108 350** |
+
+Toutes les cibles de performance sont atteintes sur cette machine : moins de 300 draw calls et de
+300 000 triangles par étage, 60 FPS en Moyen, au moins 45 FPS en Élevé. Seule exception : les
+matériaux (103 à 121, cible 60), qui sont ceux du décor.
+
+Les personnages animés coûtent un peu de calcul par image (squelettes, une texture d'os chacun) :
+Élevé et Ultra perdent 1 à 2 FPS par rapport au lot 2, alors que le nombre d'objets dessinés baisse
+d'un tiers. C'est le prix de personnages animés et crédibles ; Élevé reste près de 60 FPS.
