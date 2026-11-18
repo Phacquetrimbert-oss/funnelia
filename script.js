@@ -4295,7 +4295,7 @@ const M1 = {
   kpis(n) {
     const r = M1.resultats(n), p = n.p;
     return [
-      { nom: "Impressions (campagne + salon)", valeur: nombre(r.impressions), cible: "—", ok: null },
+      { nom: (EN ? "Impressions (campaign + show)" : "Impressions (campagne + salon)"), valeur: nombre(r.impressions), cible: "—", ok: null },
       { nom: (EN ? "Visitors (website and stand)" : "Visiteurs (site et stand)"), valeur: nombre(r.visiteurs), cible: `≥ ${nombre(p.objectifVisiteurs)}`, ok: r.visiteurs >= p.objectifVisiteurs },
       { nom: (EN ? "Share of on-target visitors" : "Part de visiteurs dans la cible"), valeur: pourcent(r.partCible), cible: "≥ 62 %", ok: r.partCible >= 62 },
       { nom: (EN ? "Cost per visitor" : "Coût par visiteur"), valeur: Number.isFinite(r.cpv) ? eurosPrecis(r.cpv) : "—", cible: (EN ? "≤ €3.40 for Excellence" : "≤ 3,40 € pour Excellence"), ok: r.cpv <= 3.4 },
