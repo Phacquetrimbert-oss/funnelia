@@ -26,6 +26,8 @@ Durées indicatives, à ajuster après vos premières séances.
 | 15 min | Débriefing collectif à partir du bilan et des erreurs (questions ci-dessous). |
 | 10 min | Deuxième tentative pour ceux qui ont échoué, ou passage en exigence « confirmé ». |
 
+Pour présenter le jeu à un groupe avant de le lancer, le bouton **« Démo (5 min) »** de l'accueil le fait jouer seul, avec des légendes (→ chapitre suivant, Espace pause, Échap quitter). Elle ne modifie aucun résultat enregistré.
+
 La première mission inclut un court didacticiel. Le bouton « Comment ça marche ? » de l'accueil et la touche H en jeu rappellent les commandes.
 
 ## Ce que chaque mission fait travailler
@@ -51,7 +53,9 @@ Le briefing de chaque mission (bouton « Détails ») affiche les critères exac
 
 ## Récupérer les résultats
 
-Onglet **Historique** de l'accueil (rubrique « Votre suivi ») → **Exporter (CSV)**. Le fichier s'ouvre dans un tableur (séparateur point-virgule, UTF-8) et contient une ligne par mission jouée : date, participant, portefeuille (avec la mention « réelle » ou « par défaut »), profil, étape, exigence, statut, niveau, score, erreurs, aides, durée, résultats et indicateurs.
+Onglet **Historique** de l'accueil (rubrique « Votre suivi ») → **Exporter (CSV)**. Le fichier s'ouvre dans un tableur (séparateur point-virgule, UTF-8) et contient une ligne par mission jouée : date, participant, portefeuille (avec la mention « réelle » ou « par défaut »), profil, étape, exigence, statut, niveau, score, erreurs, aides, durée, résultats et indicateurs. Les dernières colonnes servent aux tests joueurs : fin de mission (terminée ou abandon), durée réelle, temps en pause et en accéléré (en secondes), nombre d'accélérations, durée simulée et horodatage.
+
+Les missions **abandonnées** (retour à l'accueil, autre mission, onglet fermé) figurent aussi dans l'export, mais pas dans l'historique affiché ni dans le classement.
 
 L'onglet **Classement** compare les participants qui ont joué **sur le même poste**.
 

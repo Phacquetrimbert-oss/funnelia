@@ -26,6 +26,8 @@ Chaque mission existe en profil **terrain** ou **sédentaire** et en exigence **
 
 Formateurs : voir le [guide du formateur](docs/guide-formateur.md).
 
+**Démo de 5 minutes** : bouton « Démo (5 min) » de l'accueil, ou `index.html?demo`. Le jeu se joue seul, chapitre par chapitre, avec des légendes ; → chapitre suivant, Espace pause, Échap quitter.
+
 ## Commandes
 
 | Action | Clavier |
@@ -53,7 +55,7 @@ Tout se joue aussi à la souris, et au tactile sur tablette.
 
 Le jeu doit toujours s'ouvrir par double-clic : pas de module ES, pas de chargement de fichier par `fetch`, et Three.js reste en r128. Les raisons sont expliquées dans [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Documentation : [performances](docs/performances.md) · [interface](docs/ux.md) · [ouverture du code](docs/open-source.md) · [ajouter une mission](docs/ajouter-une-mission.md) · [guide du formateur](docs/guide-formateur.md).
+Documentation : [game design](docs/game-design.md) · [performances](docs/performances.md) · [interface](docs/ux.md) · [ouverture du code](docs/open-source.md) · [ajouter une mission](docs/ajouter-une-mission.md) · [guide du formateur](docs/guide-formateur.md).
 
 ## Contribuer
 

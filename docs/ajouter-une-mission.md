@@ -65,6 +65,10 @@ Ne changez pas les `id` : les résultats déjà enregistrés par les joueurs y s
 
 Le plus court chemin pour démarrer : **copier la mission la plus proche** de votre idée, changer son `id`, puis adapter les fonctions une à une. La mission 1 (`M1`) est la plus courte.
 
+### Mode démo
+
+La démo de 5 minutes (section G9 de `script.js`, textes dans `textes/demo.js`) joue les missions 1 et 4 et choisit les réponses des dialogues du salon **d'après leur texte** (`reponses` dans `textes/demo.js`). Si vous modifiez ces dialogues ou le configurateur de proposition, relancez la démo jusqu'au bout : une réponse introuvable n'arrête pas la démo (la première réponse est prise), mais le chapitre ne montrerait plus la bonne pratique.
+
 ### Imprévus
 
 Les mises en situation qui surviennent pendant une mission (appel d'un journaliste, client mécontent…) sont rangées par `id` dans `IMPREVUS`. Une nouvelle mission sans entrée dans `IMPREVUS` fonctionne : elle n'aura simplement pas d'imprévu.
