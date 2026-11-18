@@ -32,6 +32,19 @@ const LANGUE = (() => { try { return localStorage.getItem(CLE_LANGUE) === "en" ?
 const EN = LANGUE === "en";
 const LOCALE = EN ? "en-GB" : "fr-FR";
 document.documentElement.lang = LANGUE;
+
+/* Textes rangés dans le dossier textes/ (fichiers .js chargés avant celui-ci,
+   sans module ni fetch : le jeu reste jouable en file://). Chaque texte
+   { fr, en } y est remplacé par celui de la langue choisie. */
+const TEXTES = window.FUNNELIA_TEXTES || {};
+if (!TEXTES.catalogue) throw new Error("textes/catalogue.js n'est pas chargé : vérifiez la balise <script> dans index.html.");
+function traduire(v) {
+  if (Array.isArray(v)) return v.map(traduire);
+  if (!v || typeof v !== "object") return v;
+  const cles = Object.keys(v);
+  if (cles.length === 2 && typeof v.fr === "string" && typeof v.en === "string") return v[LANGUE];
+  return Object.fromEntries(cles.map(k => [k, traduire(v[k])]));
+}
 function traduireHTML() {
   if (!EN) return;
   document.title = "Funnelia – From prospect to customer";
@@ -3709,34 +3722,10 @@ function dessinerPlanR1(ctxCarte, W, H, avecJoueur) {
 const ENTREPRISE = { nom: "Veltis", produit: "Veltis One" };
 
 /* ---------- B1. Offre et tarifs ---------- */
-const OFFRES = {
-  essentiel: {
-    id: "essentiel", nom: (EN ? "Essential" : "Essentiel"), prix: 29, miseEnService: 990, max: 10,
-    fonctions: [(EN ? "CRM and pipeline" : "CRM et pipeline"), (EN ? "Quotes and automatic follow-ups" : "Devis et relances automatiques"), (EN ? "Mobile app" : "Application mobile")],
-    cible: (EN ? "Small sales teams (up to 10 users)" : "Petites équipes commerciales (jusqu'à 10 utilisateurs)")
-  },
-  business: {
-    id: "business", nom: "Business", prix: 59, miseEnService: 2900, max: 150,
-    fonctions: [(EN ? "Everything in Essential" : "Tout Essentiel"), (EN ? "Invoicing and payment tracking" : "Facturation et suivi des paiements"), (EN ? "Advanced reporting" : "Reporting avancé"), (EN ? "Accounting and email integrations" : "Intégrations comptabilité et messagerie"), (EN ? "Priority support" : "Support prioritaire")],
-    cible: (EN ? "SMEs connecting sales, invoicing and accounting" : "PME qui relient vente, facturation et comptabilité")
-  },
-  enterprise: {
-    id: "enterprise", nom: "Enterprise", prix: 89, miseEnService: 7900, max: 9999,
-    fonctions: [(EN ? "Everything in Business" : "Tout Business"), (EN ? "Multi-site and multi-entity" : "Multisite et multi-entités"), (EN ? "SSO and advanced permissions" : "SSO et droits avancés"), (EN ? "Open API" : "API ouverte"), (EN ? "Dedicated CSM, 99.9% SLA" : "CSM dédié, SLA 99,9 %")],
-    cible: (EN ? "Mid-sized companies and multi-site groups" : "ETI et groupes multisites")
-  }
-};
+const OFFRES = traduire(TEXTES.catalogue.offres);
 const ORDRE_OFFRES = ["essentiel", "business", "enterprise"];
-const ENGAGEMENTS = {
-  mensuel: { nom: (EN ? "Monthly" : "Mensuel"), detail: (EN ? "no commitment, +20%" : "sans engagement, +20 %"), coef: 1.2 },
-  annuel: { nom: (EN ? "Annual" : "Annuel"), detail: (EN ? "list price" : "prix catalogue"), coef: 1 },
-  triennal: { nom: (EN ? "3 years" : "3 ans"), detail: (EN ? "possible trade-off for a discount" : "contrepartie possible à une remise"), coef: 1 }
-};
-const OPTIONS = {
-  migration: { nom: (EN ? "Historical data migration" : "Reprise des données historiques"), prix: 1800, detail: (EN ? "Import of contacts, deals and history from the current tool." : "Import des contacts, affaires et historiques depuis l'outil actuel.") },
-  formation: { nom: (EN ? "Additional on-site training" : "Formation complémentaire sur site"), prix: 1200, detail: (EN ? "A day of team training at your premises." : "Une journée de formation des équipes dans vos locaux.") },
-  premium: { nom: (EN ? "24/7 premium support" : "Support premium 7j/7"), taux: 0.15, detail: (EN ? "+15% of the annual subscription." : "+15 % de l'abonnement annuel.") }
-};
+const ENGAGEMENTS = traduire(TEXTES.catalogue.engagements);
+const OPTIONS = traduire(TEXTES.catalogue.options);
 const DELEGATION = { autonomie: 10, manager: 20 };
 const COUT_HORAIRE = 75;
 const COUT_DEPLACEMENT = 35;
@@ -3754,89 +3743,18 @@ function calculerProposition(pr) {
 }
 
 /* ---------- B2. Modules et problématiques ---------- */
-const MODULES = {
-  pipeline: { nom: (EN ? "Pipeline and forecasting" : "Pipeline et prévisions"), detail: (EN ? "Deal tracking by stage, revenue forecasts." : "Suivi des affaires par étape, prévisions de chiffre d'affaires.") },
-  devis: { nom: (EN ? "Quotes and automatic follow-ups" : "Devis et relances automatiques"), detail: (EN ? "Quote templates, e-signature, scheduled follow-ups." : "Modèles de devis, signature électronique, relances programmées.") },
-  facturation: { nom: (EN ? "Invoicing and payments" : "Facturation et paiements"), detail: (EN ? "Turn quotes into invoices, track collections." : "Transformation du devis en facture, suivi des encaissements.") },
-  reporting: { nom: (EN ? "Dashboards" : "Tableaux de bord"), detail: (EN ? "Real-time indicators for management." : "Indicateurs en temps réel pour la direction.") },
-  integrations: { nom: (EN ? "Integrations and API" : "Intégrations et API"), detail: (EN ? "Accounting, email and SSO connections, open API." : "Connexion comptabilité, messagerie, SSO, API ouverte.") },
-  mobile: { nom: (EN ? "Mobile app" : "Application mobile"), detail: (EN ? "Customer records, quotes and meeting reports on the go." : "Fiches clients, devis et comptes rendus en rendez-vous.") },
-  multisite: { nom: (EN ? "Multi-site and permissions" : "Multisite et droits"), detail: (EN ? "Consolidation of several sites, permissions by entity." : "Consolidation de plusieurs sites, droits par entité.") }
-};
-const PAINS = {
-  relances: { module: "devis", court: (EN ? "Quotes not followed up" : "Devis non relancés"), texte: (EN ? "Our quotes go out by email and nobody follows them up systematically. We lose deals without even knowing it." : "Nos devis partent par e-mail et personne ne les relance de façon systématique. On perd des affaires sans même le savoir.") },
-  visibilite: { module: "pipeline", court: (EN ? "No pipeline visibility" : "Aucune visibilité sur le pipeline"), texte: (EN ? "Each sales rep has their own file: I have no consolidated view of the pipeline or the forecasts." : "Chaque commercial a son propre fichier : je n'ai aucune vision consolidée du pipeline ni des prévisions.") },
-  facturation: { module: "facturation", court: (EN ? "Manual invoicing" : "Facturation manuelle"), texte: (EN ? "Invoices are re-typed by hand from the quotes: errors, delays, unpaid invoices chased case by case." : "La facturation est refaite à la main à partir des devis : erreurs, retards, impayés relancés au cas par cas.") },
-  reporting: { module: "reporting", court: (EN ? "Time-consuming reporting" : "Reporting chronophage"), texte: (EN ? "We spend two days a month compiling tables for the management committee." : "On passe deux jours par mois à compiler des tableaux pour le comité de direction.") },
-  ressaisies: { module: "integrations", court: (EN ? "Double entry in accounting" : "Ressaisies en comptabilité"), texte: (EN ? "Nothing is connected: everything is re-keyed into the accounting software, with all the errors that come with it." : "Rien n'est connecté : tout est ressaisi dans le logiciel comptable, avec les erreurs qui vont avec.") },
-  terrain: { module: "mobile", court: (EN ? "Field teams without data" : "Équipes terrain sans données"), texte: (EN ? "Our field teams have no access to customer information during their meetings." : "Nos équipes sur le terrain n'ont pas accès aux informations clients pendant leurs rendez-vous.") },
-  multisite: { module: "multisite", court: (EN ? "Sites impossible to consolidate" : "Sites impossibles à consolider"), texte: (EN ? "With our six sites and three different tools, it's impossible to consolidate sales activity in real time." : "Avec nos six sites et trois outils différents, impossible de consolider l'activité commerciale en temps réel.") }
-};
+const MODULES = traduire(TEXTES.catalogue.modules);
+const PAINS = traduire(TEXTES.catalogue.pains);
 const ROLE_MODULE = { dg: "reporting", daf: "facturation", dircom: "pipeline", dsi: "integrations", adv: "devis" };
 
 /* ---------- B3. Motivations d'achat (SONCAS) ---------- */
-const SONCAS = {
-  securite: {
-    nom: (EN ? "Security" : "Sécurité"),
-    presentiel: (EN ? "{Il} takes notes, asks for guarantees and frowns whenever change is mentioned." : "{Il} prend des notes, demande des garanties et fronce les sourcils dès qu'on évoque un changement."),
-    distance: (EN ? "{Il} keeps coming back to the risks and asks for written guarantees." : "{Il} revient plusieurs fois sur les risques et demande des garanties écrites."),
-    note: (EN ? "Very focused on guarantees, references and service continuity." : "Très attentif aux garanties, aux références et à la continuité de service."),
-    argument: (EN ? "Hosted in France, daily backups, contractual SLA and more than 1,200 SME customers: the risk is under control." : "Hébergement en France, sauvegardes quotidiennes, SLA contractuel et plus de 1 200 PME clientes : le risque est maîtrisé.")
-  },
-  orgueil: {
-    nom: (EN ? "Pride" : "Orgueil"),
-    presentiel: (EN ? "{Il} readily talks about the company's success and its position against competitors." : "{Il} évoque volontiers la réussite de son entreprise et sa position face aux concurrents."),
-    distance: (EN ? "{Il} talks a lot about the company's image and its direct competitors." : "{Il} parle beaucoup de l'image de son entreprise et de ses concurrents directs."),
-    note: (EN ? "Proud of the company's growth, sensitive to image and positioning." : "Fier de la croissance de l'entreprise, sensible à l'image et au positionnement."),
-    argument: (EN ? "The best-performing companies in your sector already run their growth with Veltis One: you stay one step ahead." : "Les entreprises les plus performantes de votre secteur pilotent déjà leur croissance avec Veltis One : vous gardez une longueur d'avance.")
-  },
-  nouveaute: {
-    nom: (EN ? "Novelty" : "Nouveauté"),
-    presentiel: (EN ? "{Il} lights up when the latest features come up and asks for the roadmap." : "{Il} s'anime dès qu'on parle des dernières fonctionnalités et demande la feuille de route."),
-    distance: (EN ? "{Il} asks lots of questions about new features and the product roadmap." : "{Il} pose beaucoup de questions sur les nouveautés et la feuille de route produit."),
-    note: (EN ? "Curious, drawn to innovation and modern tools." : "Curieux, attiré par l'innovation et les outils modernes."),
-    argument: (EN ? "Forecasts powered by predictive analytics, new features every month: your teams work with the latest tools." : "Prévisions assistées par l'analyse prédictive, nouvelles fonctionnalités chaque mois : vos équipes travaillent avec les outils les plus récents.")
-  },
-  confort: {
-    nom: (EN ? "Comfort" : "Confort"),
-    presentiel: (EN ? "{Il} stresses ease of use and fears extra workload." : "{Il} insiste sur la simplicité d'utilisation et redoute une charge de travail supplémentaire."),
-    distance: (EN ? "{Il} asks several times how long the set-up will take." : "{Il} demande à plusieurs reprises combien de temps prendra la mise en place."),
-    note: (EN ? "Wants a simple solution, with no extra burden on the team during roll-out." : "Veut une solution simple, sans surcharge pour l'équipe pendant le déploiement."),
-    argument: (EN ? "Turnkey set-up in three weeks, training included: your teams are autonomous from the first month, with no extra workload." : "Mise en service clé en main en trois semaines, formation incluse : vos équipes sont autonomes dès le premier mois, sans charge supplémentaire.")
-  },
-  argent: {
-    nom: (EN ? "Money" : "Argent"),
-    presentiel: (EN ? "{Il} brings every topic back to cost and calculates while you speak." : "{Il} ramène chaque sujet aux coûts et calcule pendant que vous parlez."),
-    distance: (EN ? "{Il} quickly asks for the total cost and the payback period." : "{Il} demande rapidement le coût total et le délai de retour sur investissement."),
-    note: (EN ? "Thinks in terms of total cost and return on investment." : "Raisonne en coût total et en retour sur investissement."),
-    argument: (EN ? "Based on your figures, fewer lost quotes and less double entry pay back the subscription in under eight months." : "Sur la base de vos chiffres, la baisse des devis perdus et des ressaisies rembourse l'abonnement en moins de huit mois.")
-  },
-  sympathie: {
-    nom: (EN ? "Sympathy" : "Sympathie"),
-    presentiel: (EN ? "{Il} is warm, asks personal questions and places great importance on the relationship." : "{Il} est chaleureux, pose des questions personnelles et accorde beaucoup d'importance à la relation."),
-    distance: (EN ? "{Il} takes time to chat and stresses the quality of the relationship." : "{Il} prend le temps d'échanger et insiste sur la qualité de la relation."),
-    note: (EN ? "Places great importance on the relationship and on closeness." : "Accorde une grande importance à la relation et à la proximité."),
-    argument: (EN ? "You'll have a dedicated contact from start-up to day-to-day follow-up: we build a long-term relationship." : "Vous aurez un interlocuteur dédié du démarrage au suivi quotidien : nous construisons une relation dans la durée.")
-  }
-};
+const SONCAS = traduire(TEXTES.catalogue.soncas);
 
 /* ---------- B4. Concurrence ---------- */
-const CONCURRENTS = {
-  kordis: { nom: "Kordis CRM", prix: (EN ? "€19 per user per month" : "19 € par utilisateur et par mois"), forces: (EN ? "Low entry price, quick to get started." : "Prix d'appel bas, prise en main rapide."), faiblesses: (EN ? "No native invoicing or accounting integration, email-only support, limited reporting." : "Pas de facturation ni d'intégration comptable native, support uniquement par e-mail, reporting limité.") },
-  salesbase: { nom: "Salesbase", prix: (EN ? "about €120 per user per month" : "environ 120 € par utilisateur et par mois"), forces: (EN ? "Very comprehensive, big international vendor image." : "Très complet, image de grand éditeur international."), faiblesses: (EN ? "4 to 6 months to deploy, complex configuration, English-only support, high total cost." : "Déploiement de 4 à 6 mois, paramétrage complexe, support en anglais, coût total élevé.") },
-  tableur: { nom: (EN ? "Spreadsheets and emails" : "Tableurs et e-mails"), prix: (EN ? "free on the face of it" : "gratuit en apparence"), forces: (EN ? "Familiar to everyone, no visible cost." : "Connu de tous, aucune dépense visible."), faiblesses: (EN ? "Double entry, errors, no real-time visibility, dependence on individuals." : "Ressaisies, erreurs, aucune visibilité en temps réel, dépendance aux personnes.") }
-};
+const CONCURRENTS = traduire(TEXTES.catalogue.concurrents);
 
 /* ---------- B5. Comptes du territoire ---------- */
-const COMPTES = {
-  batinord: { id: "batinord", entreprise: "Batinord", secteur: "BTP", effectif: 140, contact: "Marc Delaunay", genre: "m", fonction: (EN ? "Managing Director" : "Directeur général"), role: "dg", soncas: "orgueil", utilisateurs: 18, pains: ["relances", "terrain"], budget: 14000, concurrent: "kordis", existant: (EN ? "Kordis CRM on trial" : "Kordis CRM en période d'essai"), migration: false, apparence: 0 },
-  medilys: { id: "medilys", entreprise: "Médilys", secteur: (EN ? "Medical laboratories" : "Laboratoires d'analyses"), effectif: 60, contact: "Isabelle Roche", genre: "f", fonction: (EN ? "Chief Financial and Administrative Officer" : "Directrice administrative et financière"), role: "daf", soncas: "argent", utilisateurs: 8, pains: ["facturation", "ressaisies"], budget: 6800, concurrent: "tableur", existant: (EN ? "Spreadsheets and accounting software" : "Tableurs et logiciel comptable"), migration: false, apparence: 3 },
-  fidelio: { id: "fidelio", entreprise: "Fidelio", secteur: (EN ? "Accounting firm" : "Expertise comptable"), effectif: 35, contact: "Hélène Vasseur", genre: "f", fonction: (EN ? "Partner" : "Associée"), role: "dg", soncas: "sympathie", utilisateurs: 5, pains: ["relances", "visibilite"], budget: 2400, concurrent: "kordis", existant: (EN ? "Shared spreadsheets" : "Tableurs partagés"), migration: false, apparence: 1 },
-  transalp: { id: "transalp", entreprise: "Transalp", secteur: (EN ? "Transport and logistics" : "Transport et logistique"), effectif: 220, contact: "Karim Benali", genre: "m", fonction: (EN ? "Sales Director" : "Directeur commercial"), role: "dircom", soncas: "nouveaute", utilisateurs: 25, pains: ["visibilite", "reporting"], budget: 19500, concurrent: "salesbase", existant: (EN ? "Legacy in-house CRM" : "Ancien CRM développé en interne"), migration: true, apparence: 4 },
-  optiwatt: { id: "optiwatt", entreprise: "Optiwatt", secteur: (EN ? "Energy services" : "Services énergétiques"), effectif: 90, contact: "Julien Marchal", genre: "m", fonction: (EN ? "Chief Information Officer" : "Directeur des systèmes d'information"), role: "dsi", soncas: "securite", utilisateurs: 12, pains: ["ressaisies", "reporting"], budget: 9500, concurrent: "salesbase", existant: (EN ? "Salesbase (contract ending)" : "Salesbase (fin de contrat)"), migration: true, apparence: 2 },
-  larcher: { id: "larcher", entreprise: "Groupe Larcher", secteur: (EN ? "Building materials trading" : "Négoce de matériaux"), effectif: 400, contact: "Oscar Mercier", genre: "m", fonction: (EN ? "Chief Operating Officer" : "Directeur des opérations"), role: "dg", soncas: "argent", utilisateurs: 45, pains: ["multisite", "visibilite"], budget: 52000, concurrent: "salesbase", existant: (EN ? "Three different tools depending on the site" : "Trois outils différents selon les sites"), migration: true, apparence: 5 },
-  belvue: { id: "belvue", entreprise: "Belvue", secteur: (EN ? "Hotels and seminars" : "Hôtellerie et séminaires"), effectif: 80, contact: "Sophie Nguyen", genre: "f", fonction: (EN ? "Sales Director" : "Directrice commerciale"), role: "dircom", soncas: "confort", utilisateurs: 6, pains: ["relances", "terrain"], budget: 2600, concurrent: "kordis", existant: (EN ? "Contact book and emails" : "Carnet de contacts et e-mails"), migration: false, apparence: 7 }
-};
+const COMPTES = traduire(TEXTES.catalogue.comptes);
 Object.values(COMPTES).forEach(c => { c.batiment = BATIMENTS[c.id]; c.couleur = hex(BATIMENTS[c.id].accent); });
 
 function offreRequise(c) {
@@ -3859,11 +3777,7 @@ const interlocuteurDe = c => ({ nom: c.contact, fonction: c.fonction, entreprise
 const arrCatalogue = c => c.utilisateurs * OFFRES[offreRequise(c)].prix * 12;
 
 /* ---------- B6. Cible idéale (ICP) ---------- */
-const ICP = {
-  effectif: (EN ? "20 to 250 employees (above that: Enterprise plan)" : "20 à 250 salariés (au-delà : offre Enterprise)"),
-  secteurs: (EN ? "B2B companies with a sales team: services, industry, construction, distribution, transport" : "Entreprises B2B avec une équipe commerciale : services, industrie, BTP, distribution, transport"),
-  decideurs: (EN ? "Managing director, sales director, CFO, CIO; influencers: sales admin, office manager" : "Dirigeant, directeur commercial, DAF, DSI ; influenceurs : ADV, office manager")
-};
+const ICP = traduire(TEXTES.catalogue.icp);
 
 /* ---------- B7. Guide du commercial ---------- */
 function construireGuide() {
