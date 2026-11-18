@@ -1,0 +1,54 @@
+# Publication de Funnelia sur GitHub Pages à chaque envoi sur la branche main.
+# Le jeu n'a pas d'étape de compilation : on vérifie les textes FR/EN, on copie
+# les fichiers utiles au jeu dans _site/, et GitHub Pages les sert tels quels.
+name: Publier sur GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  construire:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Vérifier que les textes FR et EN sont synchronisés
+        run: python3 outils/verifier-textes.py
+
+      - name: Rassembler les fichiers du jeu
+        # Seuls les fichiers chargés par index.html sont publiés : les modèles
+        # .glb (sources et versions allégées) restent dans le dépôt.
+        run: |
+          mkdir -p _site/assets/personnages
+          cp index.html style.css script.js LICENSE LICENSE-CONTENUS CREDITS.md _site/
+          cp -R textes vendor fonts _site/
+          cp assets/personnages/*.js _site/assets/personnages/
+          for f in $(grep -oE '(src|href)="[^":]+"' index.html | cut -d'"' -f2); do
+            test -f "_site/$f" || { echo "Fichier manquant dans _site : $f"; exit 1; }
+          done
+
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: _site
+
+  publier:
+    needs: construire
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploiement.outputs.page_url }}
+    steps:
+      - id: deploiement
+        uses: actions/deploy-pages@v4
