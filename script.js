@@ -7061,11 +7061,12 @@ function commencerNiveau() {
   $("rappel-touches").classList.toggle("cache", resultats.historique.length > 0);
   jeu.mode = "jeu";
   noter("info", (EN ? "Mission started." : "Début de la mission."));
-  animerDebutEtape(jeu.def, jeu.niveauIndex);
+  // 60 premières secondes : une consigne à la fois. Le didacticiel suit l'animation d'étape ;
+  // l'astuce « Tab » est portée par le didacticiel et le rappel des touches.
+  const mission = jeu.def;
+  animerDebutEtape(jeu.def, jeu.niveauIndex, () => { if (jeu.def === mission) lancerDidacticiel(); });
   if (jeu.def.auDemarrage) jeu.def.auDemarrage(jeu.n);
   majPanneau(true);
-  lancerDidacticiel();
-  if (jeu.mode === "jeu") message((EN ? "Tip: the Tab key lets you drive the CRM with the keyboard." : "Astuce : la touche Tab permet de piloter le CRM au clavier."), "info", 3200);
 }
 
 function interrompreMission() {
@@ -8628,6 +8629,16 @@ function objectifsBoussole() {
     liste.push({ x: p.x, z: p.z, type: "demande", label: vie.demande.employe.def.nom, etage: vie.demande.employe.etage });
   }
   if (jeu.destination) liste.push({ x: jeu.destination.x, z: jeu.destination.z, type: "destination", label: jeu.destination.label, etage: jeu.destination.etage });
+  // Didacticiel « parlez à un collègue » : la boussole désigne le collègue le plus proche
+  if (didacticiel.actif && didacticiel.etape === 1) {
+    let proche = null, dMin = Infinity;
+    employes.forEach(e => {
+      if (e.etage !== joueur.etage || !e.mesh.visible) return;
+      const d = Math.hypot(e.mesh.position.x - joueur.x, e.mesh.position.z - joueur.z);
+      if (d < dMin) { dMin = d; proche = e; }
+    });
+    if (proche) liste.push({ x: proche.mesh.position.x, z: proche.mesh.position.z, type: "demande", label: proche.def.nom, etage: joueur.etage });
+  }
   // Un objectif situé à un autre niveau se signale sur les ascenseurs du niveau courant
   const vus = new Set();
   return liste.map(o => (o.etage === joueur.etage ? o : { x: 3.9, z: 9.0, type: o.type, label: EN ? `Lift → ${ETAGES[o.etage].code} · ${o.label}` : `Ascenseur → ${ETAGES[o.etage].code} · ${o.label}`, etage: joueur.etage, ailleurs: ETAGES[o.etage].code }))
@@ -10613,7 +10624,7 @@ function surveillerTunnel() {
   majAnimationsConversion();
 }
 // Grande animation : passage d'une étape du tunnel à une autre (jauge du participant)
-function scenePassage({ titre, sousTitre, etapes, de, vers, couleur, recul = false }) {
+function scenePassage({ titre, sousTitre, etapes, de, vers, couleur, recul = false, ensuite = null, passable = false }) {
   const el = $("anim-etape");
   el.style.setProperty("--c", couleur || "#2a78d6");
   el.className = `anim-etape${recul ? " recul" : ""}`;
@@ -10625,8 +10636,22 @@ function scenePassage({ titre, sousTitre, etapes, de, vers, couleur, recul = fal
   void el.offsetWidth;
   el.classList.add("ae-anim");
   clearTimeout(scenePassage.minuterie);
-  scenePassage.minuterie = setTimeout(() => el.classList.add("cache"), 3600);
+  terminerScene.ensuite = ensuite;
+  terminerScene.passable = passable;
+  scenePassage.minuterie = setTimeout(terminerScene, 3600);
 }
+// Fin de l'animation (au bout de 3,6 s, ou plus tôt par une touche ou un clic) puis action suivante
+function terminerScene() {
+  clearTimeout(scenePassage.minuterie);
+  $("anim-etape").classList.add("cache");
+  const suite = terminerScene.ensuite;
+  terminerScene.ensuite = null;
+  if (suite) suite();
+}
+// Seule l'animation de début de mission se passe : celles qui surviennent en jouant restent visibles
+const scenePassable = () => terminerScene.passable && !$("anim-etape").classList.contains("cache");
+window.addEventListener("keydown", e => { if (scenePassable() && !e.repeat && !["Shift", "Control", "Alt", "Meta"].includes(e.key)) terminerScene(); }, true);
+window.addEventListener("pointerdown", () => { if (scenePassable()) terminerScene(); }, true);
 function animerPassageEtape(avant, apres) {
   const i = POSTURES.indexOf(avant), j = POSTURES.indexOf(apres);
   const progres = j > i;
@@ -10637,13 +10662,13 @@ function animerPassageEtape(avant, apres) {
     etapes: ETAPES_TUNNEL(), de: i, vers: j, couleur: progres ? "#15803d" : "#b91c1c", recul: !progres
   });
 }
-function animerDebutEtape(def, index) {
+function animerDebutEtape(def, index, ensuite = null) {
   const etapes = [T("Inconnu", "Unknown"), "Prospect", "Lead", T("Opportunité", "Opportunity"), T("Client", "Customer"), T("Client fidèle", "Loyal customer")];
   const de = Math.max(0, etapes.indexOf(def.transition[0]));
   scenePassage({
     titre: `${def.bonus ? "Bonus" : T(`Étape ${index + 1}`, `Stage ${index + 1}`)} · ${def.phase}`,
     sousTitre: T(`Objectif : faire passer vos contacts de <strong>${echapper(def.transition[0])}</strong> à <strong>${echapper(def.transition[1])}</strong>.`, `Goal: move your contacts from <strong>${echapper(def.transition[0])}</strong> to <strong>${echapper(def.transition[1])}</strong>.`),
-    etapes, de, vers: Math.min(etapes.length - 1, de + 1), couleur: def.couleur
+    etapes, de, vers: Math.min(etapes.length - 1, de + 1), couleur: def.couleur, ensuite, passable: true
   });
 }
 // Bilan : passage de l'étape de la mission, compteur animé des contacts convertis
@@ -11072,6 +11097,7 @@ function panneauReservation(g, s) {
 }
 
 /* ---------- L5. Fil d'actualité interne ---------- */
+const DEBUT_SANS_FIL = 45;
 vie.fil = [];
 vie.signatures = [];
 function publier(auteur, texte, { couleur = "#334155", type = "info" } = {}) {
@@ -11079,6 +11105,8 @@ function publier(auteur, texte, { couleur = "#334155", type = "info" } = {}) {
   vie.fil.push({ auteur, texte, couleur, type, heure });
   if (vie.fil.length > 40) vie.fil.shift();
   if (!jeu.def || !["jeu", "dialogue", "fenetre", "ascenseur"].includes(jeu.mode)) return;
+  // Le fil reste silencieux pendant les 45 premières secondes de la mission (il est conservé dans vie.fil)
+  if (jeu.dureeReelle < DEBUT_SANS_FIL) return;
   const zone = $("fil");
   const el = document.createElement("div");
   el.className = `fil-post fil-${type}`;
