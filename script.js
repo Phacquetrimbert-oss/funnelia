@@ -211,7 +211,8 @@ function chargerResultats() {
     posture: { terrain: POSTURE_DEPART, sedentaire: POSTURE_DEPART },
     trajectoire: { terrain: [], sedentaire: [] },
     tunnels: { terrain: Array(NB_ETAPES).fill(null), sedentaire: Array(NB_ETAPES).fill(null) },
-    historique: []
+    historique: [],
+    abandons: []            // missions quittées avant la fin (tests joueurs), hors historique et classement
   };
   try {
     const d = JSON.parse(localStorage.getItem(CLE_SAUVEGARDE));
@@ -6853,6 +6854,7 @@ function afficherHistorique() {
 }
 
 function afficherAccueil() {
+  enregistrerAbandon();
   viderNiveau();
   jeu.mode = "menu";
   jeu.def = null;
@@ -6909,6 +6911,7 @@ function placerJoueur(x, z, angle = 0, etage = 1) {
 }
 
 function lancerNiveau(i) {
+  enregistrerAbandon();
   viderNiveau();
   const def = NIVEAUX[i];
   const p = def.params[resultats.exigence] || def.params.standard;
@@ -6917,6 +6920,7 @@ function lancerNiveau(i) {
   const per = def.periode(p);
   Object.assign(jeu, {
     niveauIndex: i, def, n: {}, p, erreurs: 0, journal: [], competences: {}, dureeReelle: 0, acceleration: 1, aides: 0,
+    enCours: false, tempsPause: 0, tempsAccelere: 0, accelerations: 0,
     minutes: per.debut, debutMinutes: per.debut, finMinutes: per.fin, rythme: per.rythme, affichage: per.affichage, zoom: reglages().zoom,
     focusPanneau: false, cleFocusPanneau: "", indexFocusPanneau: 0,
     posture: resultats.posture[resultats.profil], postureDepart: resultats.posture[resultats.profil], reflexesRequin: [], gestesPartenaire: 0,
@@ -6974,6 +6978,7 @@ function commencerNiveau() {
   $("manette").classList.remove("cache");
   $("rappel-touches").classList.toggle("cache", resultats.historique.length > 0);
   jeu.mode = "jeu";
+  jeu.enCours = true;
   noter("info", (EN ? "Mission started." : "Début de la mission."));
   // 60 premières secondes : une consigne à la fois. Le didacticiel suit l'animation d'étape ;
   // l'astuce « Tab » est portée par le didacticiel et le rappel des touches.
@@ -6987,6 +6992,34 @@ function interrompreMission() {
   son("echec");
   terminerNiveau(false, 0, (EN ? `You have reached the limit of ${MAX_ERREURS} errors. Review the mission log below, then restart the mission.` : `Vous avez atteint la limite de ${MAX_ERREURS} erreurs. Analysez le journal de mission ci-dessous, puis recommencez la mission.`), { interrompu: true });
 }
+
+/* Tests joueurs : temps détaillés d'une mission, et missions quittées avant la fin
+   (retour à l'accueil, autre mission, onglet fermé). Les abandons sont rangés à
+   part : ils n'entrent ni dans l'historique, ni dans le classement, ni dans les badges. */
+function tempsDetailles(date) {
+  return {
+    horodatage: date.toISOString(),
+    tempsPauseSec: Math.round(jeu.tempsPause), tempsAccelereSec: Math.round(jeu.tempsAccelere),
+    accelerations: jeu.accelerations, dureeSimuleeMin: Math.round(jeu.minutes - jeu.debutMinutes)
+  };
+}
+function enregistrerAbandon() {
+  if (!jeu.enCours || !jeu.def) return;
+  jeu.enCours = false;
+  const date = new Date(), dureeSec = Math.round(jeu.dureeReelle);
+  resultats.abandons.push({
+    date: date.toLocaleString(LOCALE, { dateStyle: "short", timeStyle: "short" }),
+    nom: resultats.nom, portefeuille: portefeuille(), portefeuilleDefaut: portefeuilleParDefaut(),
+    profil: PROFILS[jeu.profil].nom, etape: jeu.def.phase, exigence: libelleExigence(),
+    etapeId: jeu.def.id, profilId: jeu.profil, exigenceId: resultats.exigence,
+    statut: "abandon", statutTexte: T("Abandon", "Abandoned"), erreurs: jeu.erreurs, aides: jeu.aides,
+    duree: `${Math.floor(dureeSec / 60)} min ${String(dureeSec % 60).padStart(2, "0")} s`, dureeSec,
+    ...tempsDetailles(date), fin: "abandon"
+  });
+  if (resultats.abandons.length > 500) resultats.abandons.splice(0, resultats.abandons.length - 500);
+  sauverResultats();
+}
+window.addEventListener("pagehide", enregistrerAbandon);
 
 function terminerNiveau(succes, etoiles, texte, options = {}) {
   if (jeu.mode === "bilan" || !jeu.def) return;
@@ -7035,8 +7068,10 @@ function terminerNiveau(succes, etoiles, texte, options = {}) {
     statut, statutTexte, etoiles: succes ? etoiles : 0, score, erreurs: jeu.erreurs, aides: jeu.aides, duree, dureeSec, signature,
     conversion: tunnel ? Math.round(tauxTunnel(tunnel)) : null, posture: posture().nom, reflexesRequin: jeu.reflexesRequin.length,
     kpis: kpis.map(k => `${k.nom} : ${k.valeur}`).join(" | "),
-    competences: competences.map(c => `${c.nom} : ${c.pct} %`).join(" | ")
+    competences: competences.map(c => `${c.nom} : ${c.pct} %`).join(" | "),
+    ...tempsDetailles(date), fin: "terminee"
   };
+  jeu.enCours = false;
   resultats.historique.push(entree);
   if (resultats.historique.length > 500) resultats.historique.splice(0, resultats.historique.length - 500);
   sauverResultats();
@@ -7136,6 +7171,7 @@ function reprendre() {
 function basculerAcceleration() {
   if (!["jeu", "dialogue", "fenetre"].includes(jeu.mode)) return;
   jeu.acceleration = jeu.acceleration === 1 ? 3 : 1;
+  if (jeu.acceleration > 1) jeu.accelerations++;
   $("btn-accelerer").classList.toggle("actif", jeu.acceleration > 1);
   message(jeu.acceleration > 1 ? (EN ? "Time accelerated (×3)" : "Temps accéléré (×3)") : (EN ? "Normal time" : "Temps normal"), "info", 1400);
 }
@@ -7147,8 +7183,16 @@ function basculerSon() {
 }
 
 function exporterCSV() {
-  const entete = ["Date", "Participant", (EN ? "Customers in portfolio" : "Clients en portefeuille"), (EN ? "Portfolio value" : "Valeur du portefeuille"), (EN ? "Profile" : "Profil"), (EN ? "Stage" : "Étape"), (EN ? "Difficulty" : "Exigence"), (EN ? "Status" : "Statut"), (EN ? "Level" : "Niveau"), "Score", (EN ? "Errors" : "Erreurs"), (EN ? "Aids" : "Aides"), (EN ? "Time" : "Durée"), (EN ? "Result code" : "Code résultat"), (EN ? "Conversion rate" : "Taux de conversion"), (EN ? "Funnel stage reached" : "Étape atteinte dans le tunnel"), (EN ? "Conversion blockers" : "Freins à la conversion"), (EN ? "Indicators" : "Indicateurs"), (EN ? "Skills" : "Compétences")];
-  const lignes = resultats.historique.map(h => [h.date, h.nom, h.portefeuille || "", h.portefeuille ? (h.portefeuilleDefaut ? (EN ? "default" : "par défaut") : (EN ? "real" : "réelle")) : "", h.profil, h.etape, h.exigence, h.statutTexte, h.etoiles, h.score, h.erreurs, h.aides || 0, h.duree, h.signature || "", h.conversion ?? "", h.posture || "", h.reflexesRequin ?? "", h.kpis, h.competences]);
+  const entete = ["Date", "Participant", (EN ? "Customers in portfolio" : "Clients en portefeuille"), (EN ? "Portfolio value" : "Valeur du portefeuille"), (EN ? "Profile" : "Profil"), (EN ? "Stage" : "Étape"), (EN ? "Difficulty" : "Exigence"), (EN ? "Status" : "Statut"), (EN ? "Level" : "Niveau"), "Score", (EN ? "Errors" : "Erreurs"), (EN ? "Aids" : "Aides"), (EN ? "Time" : "Durée"), (EN ? "Result code" : "Code résultat"), (EN ? "Conversion rate" : "Taux de conversion"), (EN ? "Funnel stage reached" : "Étape atteinte dans le tunnel"), (EN ? "Conversion blockers" : "Freins à la conversion"), (EN ? "Indicators" : "Indicateurs"), (EN ? "Skills" : "Compétences"),
+    (EN ? "Mission end" : "Fin de mission"), (EN ? "Real duration (s)" : "Durée réelle (s)"), (EN ? "Time paused (s)" : "Temps en pause (s)"),
+    (EN ? "Time accelerated ×3 (s)" : "Temps accéléré ×3 (s)"), (EN ? "Accelerations" : "Accélérations"), (EN ? "Simulated duration (min)" : "Durée simulée (min)"), (EN ? "Timestamp (ISO)" : "Horodatage (ISO)")];
+  // Missions terminées et abandonnées, dans l'ordre chronologique (les entrées des
+  // versions précédentes, sans horodatage, restent en tête dans leur ordre d'origine).
+  const sessions = [...resultats.historique, ...resultats.abandons]
+    .map((h, i) => ({ h, i })).sort((a, b) => (a.h.horodatage || "").localeCompare(b.h.horodatage || "") || a.i - b.i).map(x => x.h);
+  const fin = h => h.fin === "abandon" ? T("abandon", "abandoned") : h.fin === "terminee" ? T("terminée", "completed") : "";
+  const lignes = sessions.map(h => [h.date, h.nom, h.portefeuille || "", h.portefeuille ? (h.portefeuilleDefaut ? (EN ? "default" : "par défaut") : (EN ? "real" : "réelle")) : "", h.profil, h.etape, h.exigence, h.statutTexte, h.etoiles, h.score, h.erreurs, h.aides || 0, h.duree, h.signature || "", h.conversion ?? "", h.posture || "", h.reflexesRequin ?? "", h.kpis, h.competences,
+    fin(h), h.dureeSec ?? "", h.tempsPauseSec ?? "", h.tempsAccelereSec ?? "", h.accelerations ?? "", h.dureeSimuleeMin ?? "", h.horodatage || ""]);
   const csv = [entete, ...lignes].map(l => l.map(v => `"${String(v ?? "").replace(/"/g, '""')}"`).join(";")).join("\r\n");
   const blob = new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" });
   const lien = document.createElement("a");
@@ -7209,7 +7253,7 @@ $("btn-reprendre").addEventListener("click", reprendre);
 $("btn-recommencer").addEventListener("click", () => lancerNiveau(jeu.niveauIndex));
 $("btn-pause-accueil").addEventListener("click", afficherAccueil);
 $("btn-exporter").addEventListener("click", () => {
-  if (!resultats.historique.length) { alert((EN ? "No results to export yet." : "Aucun résultat à exporter pour le moment.")); return; }
+  if (!resultats.historique.length && !resultats.abandons.length) { alert((EN ? "No results to export yet." : "Aucun résultat à exporter pour le moment.")); return; }
   exporterCSV();
 });
 $("btn-reinitialiser").addEventListener("click", () => {
@@ -7222,7 +7266,8 @@ $("btn-reinitialiser").addEventListener("click", () => {
     posture: { terrain: POSTURE_DEPART, sedentaire: POSTURE_DEPART },
     trajectoire: { terrain: [], sedentaire: [] },
     tunnels: { terrain: Array(NB_ETAPES).fill(null), sedentaire: Array(NB_ETAPES).fill(null) },
-    historique: []
+    historique: [],
+    abandons: []
   });
   sauverResultats();
   afficherAccueil();
@@ -7591,6 +7636,7 @@ function boucle() {
 
   if (jeu.mode === "jeu" && jeu.def) {
     jeu.dureeReelle += dt;
+    if (jeu.acceleration > 1) jeu.tempsAccelere += dt;
     if (!jeu.focusPanneau) deplacerJoueur(dt); else joueur.bouge = false;
     const dmin = dt * jeu.rythme * jeu.acceleration;
     jeu.minutes += dmin;
@@ -7604,6 +7650,7 @@ function boucle() {
   } else {
     joueur.bouge = false;
     if (["dialogue", "fenetre"].includes(jeu.mode)) jeu.dureeReelle += dt;
+    else if (jeu.mode === "pause" && jeu.enCours) jeu.tempsPause += dt;
   }
 
   if (jeu.def && jeu.n && ["jeu", "dialogue", "fenetre", "pause", "briefing"].includes(jeu.mode) && jeu.def.hud) {
