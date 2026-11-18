@@ -37,7 +37,7 @@ document.documentElement.lang = LANGUE;
    sans module ni fetch : le jeu reste jouable en file://). Chaque texte
    { fr, en } y est remplacé par celui de la langue choisie. */
 const TEXTES = window.FUNNELIA_TEXTES || {};
-if (!TEXTES.catalogue) throw new Error("textes/catalogue.js n'est pas chargé : vérifiez la balise <script> dans index.html.");
+["catalogue", "demo"].forEach(f => { if (!TEXTES[f]) throw new Error(`textes/${f}.js n'est pas chargé : vérifiez les balises <script> dans index.html.`); });
 function traduire(v) {
   if (Array.isArray(v)) return v.map(traduire);
   if (!v || typeof v !== "object") return v;
@@ -187,6 +187,8 @@ function joursTexte(min) {
 
 /* ---------- A2. État global ---------- */
 const touches = new Set();
+// Mode démo (section G9) : déclaré ici car la sauvegarde le consulte dès le chargement
+const demo = { actif: false, index: 0, t: 0, faits: 0, legende: -1, pause: false, jeton: 0, dernier: 0, sauvegarde: null, clicInterne: false, opp: null, visiteur: null, manques: [], erreurs: [] };
 const jeu = {
   mode: "menu", temps: 0, dureeReelle: 0,
   minutes: 0, debutMinutes: 0, finMinutes: 0, rythme: 1, acceleration: 1, affichage: "jour",
@@ -201,9 +203,10 @@ const jeu = {
 const CLE_SAUVEGARDE = CLES_STOCKAGE.parcours;
 // Logo Funnelia : entonnoir en 4 bandes, une par étape du tunnel (Prospect, Lead, Opportunité, Client)
 const LOGO_FUNNELIA = '<svg viewBox="0 0 48 48" role="img"><rect width="48" height="48" rx="11" fill="#0b1f3a"/><path d="M8 10h32l-3.2 6.5H11.2z" fill="#94a3b8"/><path d="M12.4 18.5h23.2l-3.2 6.5H15.6z" fill="#3b82f6"/><path d="M16.8 27h14.4l-3.2 6.5h-8z" fill="#8b5cf6"/><path d="M21 35.5h6l-1.2 4.5h-3.6z" fill="#22c55e"/></svg>';
-function chargerResultats() {
+// Progression vierge (nouveau joueur ; aussi utilisée, en mémoire seulement, par le mode démo)
+function resultatsVierges() {
   const vide = () => Array(NB_ETAPES).fill(0);
-  const base = {
+  return {
     nom: "", portefeuille: null, profil: "terrain", exigence: "standard", son: true,
     meilleurs: { terrain: vide(), sedentaire: vide() },
     etoiles: { terrain: vide(), sedentaire: vide() },
@@ -214,6 +217,9 @@ function chargerResultats() {
     historique: [],
     abandons: []            // missions quittées avant la fin (tests joueurs), hors historique et classement
   };
+}
+function chargerResultats() {
+  const base = resultatsVierges();
   try {
     const d = JSON.parse(localStorage.getItem(CLE_SAUVEGARDE));
     if (d && d.meilleurs && d.etoiles && d.tentatives) {
@@ -231,6 +237,7 @@ function chargerResultats() {
   return base;
 }
 function sauverResultats() {
+  if (demo.actif) return;   // la démo n'écrit jamais dans la progression du joueur
   try { localStorage.setItem(CLE_SAUVEGARDE, JSON.stringify(resultats)); } catch (e) { /* ignoré */ }
 }
 const resultats = chargerResultats();
@@ -7004,7 +7011,7 @@ function tempsDetailles(date) {
   };
 }
 function enregistrerAbandon() {
-  if (!jeu.enCours || !jeu.def) return;
+  if (!jeu.enCours || !jeu.def || demo.actif) return;
   jeu.enCours = false;
   const date = new Date(), dureeSec = Math.round(jeu.dureeReelle);
   resultats.abandons.push({
@@ -7632,6 +7639,7 @@ function boucle() {
   jeu.temps += dt;
   debugDebutImage();
   if (bancTest.actif) { executerBanc(); debugFinImage(); return; }
+  if (demo.actif) majDemo();
   majFrustumCamera();
 
   if (jeu.mode === "jeu" && jeu.def) {
@@ -8059,6 +8067,271 @@ $("btn-pause-reglages").addEventListener("click", () => ouvrirReglages());
    chaîne de post-traitement HDR : occlusion ambiante, halo lumineux,
    tone mapping filmique, étalonnage, vignettage et anticrénelage.
    ===================================================================== */
+
+/* ---------- G9. Mode démo : 5 minutes de jeu réel, commentées, pour une présentation ----------
+   Le jeu se joue seul dans le vrai moteur (missions, dialogues, CRM, tableau de bord, bilan),
+   chapitre par chapitre, avec des légendes FR/EN (textes/demo.js). Commandes : → suivant,
+   ← reprendre (ou chapitre précédent), Espace pause, Échap quitter.
+   La progression du joueur n'est jamais touchée : elle est mise de côté au lancement, rien
+   n'est enregistré pendant la démo (sauverResultats, enregistrerAbandon) et elle est
+   rétablie à la sortie. Une étape qui échoue est sautée : la démo ne bloque jamais. */
+const TX_DEMO = traduire(TEXTES.demo);
+const CHAPITRES_DEMO = TX_DEMO.chapitres;
+const DUREE_DEMO = CHAPITRES_DEMO.reduce((s, c) => s + c.duree, 0);
+
+// Met un élément en évidence, puis le clique (sélecteur relu au dernier moment : le CRM se redessine)
+function demoCliquer(cible, delai = 900) {
+  const trouver = () => (typeof cible === "string" ? document.querySelector(cible) : cible);
+  const el = trouver();
+  if (!el) { demo.manques.push(String(cible)); return; }
+  el.classList.add("demo-cible");
+  const jeton = demo.jeton;
+  setTimeout(() => {
+    el.classList.remove("demo-cible");
+    if (!demo.actif || demo.jeton !== jeton) return;
+    const actuel = trouver() || el;
+    demo.clicInterne = true;
+    try { actuel.click(); } finally { demo.clicInterne = false; }
+  }, delai);
+}
+const demoCarte = (nom, valeur) => document.querySelector(`#fenetre-corps input[name="${nom}"][value="${valeur}"]`)?.closest("label");
+// Choisit la réponse d'un dialogue d'après son texte ; à défaut, la première (et le test le signale)
+function demoChoisir(texte) {
+  const boutons = [...document.querySelectorAll("#dialogue-boutons button")];
+  const b = boutons.find(x => x.textContent.includes(texte));
+  if (!b) demo.manques.push(texte);
+  demoCliquer(b || boutons[0], 1400);
+}
+function demoMarcher(direction, secondes) {
+  touches.add(direction);
+  const jeton = demo.jeton;
+  setTimeout(() => { if (demo.jeton === jeton) touches.delete(direction); }, secondes * 1000);
+}
+function demoMission(i) {
+  afficherAccueil();
+  lancerNiveau(i);
+  commencerNiveau();
+  jeu.imprevus = [];   // pas d'imprévu pendant la démo : le fil commenté reste celui prévu
+}
+
+// Actions de chaque chapitre : [instant en secondes, action]
+const ACTIONS_DEMO = {
+  accueil: [
+    [0, () => afficherAccueil()],
+    ...[0, 1, 2, 3, 4].map(i => [10 + i * 3.4, () => {
+      document.querySelectorAll(".carte-etape.demo-cible").forEach(e => e.classList.remove("demo-cible"));
+      const c = document.querySelectorAll(".carte-etape")[i];
+      if (c) c.classList.add("demo-cible");
+    }]),
+    [27, () => { document.querySelectorAll(".demo-cible").forEach(e => e.classList.remove("demo-cible")); $("btn-hero") && $("btn-hero").classList.add("demo-cible"); }]
+  ],
+  briefing: [
+    [0, () => { afficherAccueil(); lancerNiveau(0); }],
+    [9, () => demoCliquer("#btn-briefing-details")],
+    [13, () => $("briefing-details") && $("briefing-details").scrollIntoView({ behavior: "smooth", block: "start" })]
+  ],
+  prospection: [
+    [0, () => demoMission(0)],
+    ...["linkedin", "seo", "social", "emailing"].map((k, i) => [5 + i * 2, () => demoCliquer(demoCarte("canal", k), 500)]),
+    [14, () => demoCliquer(demoCarte("message", "benefice"), 500)],
+    [18, () => demoCliquer("#btn-valider-plan")],
+    [21, () => {
+      // Un visiteur de la cible arrive tout de suite au stand et reste jusqu'à la fin du chapitre
+      const p = jeu.n.visiteurs.find(x => x.v.type === "icp" && x.etat === "attente");
+      demo.visiteur = p || null;
+      if (!p) return;
+      p.arrivee = jeu.minutes - jeu.debutMinutes;
+      p.depart = p.arrivee + 9999;
+    }],
+    [22, () => { if (demo.visiteur) demo.visiteur.cibleForcee = { x: joueur.x, z: joueur.z + 1.4 }; }],
+    [27, () => { if (demo.visiteur && demo.visiteur.etat === "present") aborderVisiteur(jeu.n, demo.visiteur); }],
+    [32, () => demoChoisir(TX_DEMO.reponses.accroche)],
+    [41, () => demoChoisir(demo.visiteur ? PITCHS[demo.visiteur.v.role] : "")],
+    [50, () => demoChoisir(TX_DEMO.reponses.conclusion)]
+  ],
+  closing: [
+    [0, () => { resultats.profil = "terrain"; demoMission(3); }],
+    [4, () => demoMarcher("haut", 1.6)],
+    [8, () => { const f = document.querySelector("#panneau-mission .fiche"); if (f) f.classList.add("demo-cible"); }],
+    [13, () => {
+      document.querySelectorAll(".demo-cible").forEach(e => e.classList.remove("demo-cible"));
+      const o = jeu.n.opps.find(x => x.etat === "proposition");
+      if (!o) return;
+      demo.opp = o;
+      const b = document.querySelector(`#panneau-mission [data-cmd="proposer"][data-id="${o.id}"]`);
+      if (b) b.classList.add("demo-cible");
+      setTimeout(() => { if (b) b.classList.remove("demo-cible"); if (demo.actif && demo.opp === o) jeu.def.commande(jeu.n, "proposer", o.id); }, 1200);
+    }],
+    [17, () => demo.opp && demoCliquer(demoCarte("offre", offreRequise(demo.opp.c)), 700)],
+    [25, () => demoCliquer(demoCarte("remise", "5"), 700)],
+    [32, () => demoCliquer("#btn-envoyer-proposition")]
+  ],
+  pilotage: [
+    [0, () => { fermerFenetre(); fermerEntretien(); if (jeu.mode !== "jeu") jeu.mode = "jeu"; ouvrirTableauDeBord("synthese"); }],
+    [11, () => demoCliquer('[data-kpi="1"]', 600)],
+    [22, () => demoCliquer('[data-kpi="3"]', 600)],
+    [31, () => demoCliquer('[data-kpi="4"]', 600)]
+  ],
+  bilan: [
+    [0, () => {
+      // Une mission de prospection jouée jusqu'au bout : plan validé par le vrai calcul (dont un fichier
+      // d'e-mails acheté, erreur RGPD expliquée au bilan), objectif de prospects atteint au salon.
+      afficherAccueil();
+      lancerNiveau(0);
+      afficherEcran(null);
+      jeu.mode = "jeu";
+      ouvrirPlanMedia(jeu.n);
+      ["google", "seo", "fichier", "social", "emailing"].forEach(k => { const c = demoCarte("canal", k); if (c) c.querySelector("input").checked = true; });
+      const m = demoCarte("message", "benefice"); if (m) m.querySelector("input").checked = true;
+      validerPlanMedia(jeu.n);
+      // Fin de journée : tous les visiteurs sont passés au stand ; durée = temps joué au chapitre « Prospection »
+      jeu.n.visiteurs.forEach(p => { p.etat = "parti"; p.mesh.visible = false; });
+      Object.assign(jeu.n, { contacts: jeu.n.p.objectifContacts, rencontres: jeu.n.p.objectifContacts + 3, tiedes: 2 });
+      jeu.dureeReelle = CHAPITRES_DEMO.find(c => c.id === "prospection").duree;
+      jeu.minutes = jeu.finMinutes;
+      jeu.def.finTemps(jeu.n);
+    }],
+    [1.5, () => $("bilan-bandeau") && $("bilan-bandeau").scrollIntoView({ block: "start" })],
+    [16, () => $("bilan-journal") && $("bilan-journal").scrollIntoView({ behavior: "smooth", block: "center" })],
+    [31, () => $("bilan-boutons") && $("bilan-boutons").scrollIntoView({ behavior: "smooth", block: "center" })]
+  ],
+  fin: [
+    [0, () => { afficherAccueil(); $("demo-fin").classList.remove("cache"); }]
+  ]
+};
+
+function lancerDemo() {
+  if (demo.actif) return;
+  demo.sauvegarde = JSON.stringify(resultats);
+  demo.actif = true;
+  demo.manques = [];
+  demo.erreurs = [];
+  // Progression vierge le temps de la démo (le nom et les scores du joueur n'apparaissent pas)
+  const son = resultats.son;
+  Object.keys(resultats).forEach(k => delete resultats[k]);
+  Object.assign(resultats, resultatsVierges(), { son, didacticiel: true });
+  document.body.classList.add("demo-active");
+  $("demo").classList.remove("cache");
+  $("demo-progres").innerHTML = CHAPITRES_DEMO.map(c => `<span style="flex:${c.duree}"><i></i></span>`).join("");
+  demoAller(0);
+}
+function demoAller(i) {
+  demo.index = clamp(i, 0, CHAPITRES_DEMO.length - 1);
+  demo.jeton++;
+  demo.t = 0;
+  demo.faits = 0;
+  demo.legende = -1;
+  demo.pause = false;
+  demo.opp = null;
+  demo.visiteur = null;
+  demo.dernier = performance.now();
+  touches.clear();
+  document.querySelectorAll(".demo-cible").forEach(e => e.classList.remove("demo-cible"));
+  $("demo-fin").classList.add("cache");
+  fermerFenetre();
+  fermerEntretien();
+  $("anim-etape").classList.add("cache");
+  const c = CHAPITRES_DEMO[demo.index];
+  $("demo-numero").textContent = `${demo.index + 1} / ${CHAPITRES_DEMO.length}`;
+  $("demo-titre").textContent = c.titre;
+  majBoutonPauseDemo();
+}
+function majBoutonPauseDemo() {
+  const b = $("demo-pause");
+  b.textContent = demo.pause ? "▶" : "❚❚";
+  b.title = demo.pause ? TX_DEMO.reprendre : TX_DEMO.pause;
+  b.setAttribute("aria-label", b.title);
+}
+function basculerPauseDemo() {
+  demo.pause = !demo.pause;
+  majBoutonPauseDemo();
+}
+function quitterDemo() {
+  if (!demo.actif) return;
+  demo.jeton++;
+  touches.clear();
+  jeu.enCours = false;
+  fermerFenetre();
+  fermerEntretien();
+  $("anim-etape").classList.add("cache");
+  const sauvegarde = JSON.parse(demo.sauvegarde);
+  Object.keys(resultats).forEach(k => delete resultats[k]);
+  Object.assign(resultats, sauvegarde);
+  demo.actif = false;
+  document.body.classList.remove("demo-active");
+  document.querySelectorAll(".demo-cible").forEach(e => e.classList.remove("demo-cible"));
+  $("demo").classList.add("cache");
+  $("demo-fin").classList.add("cache");
+  afficherAccueil();
+}
+// Appelée à chaque image par la boucle principale (horloge propre : pas de plafond de 50 ms par image)
+function majDemo() {
+  const maintenant = performance.now();
+  const dt = Math.min(0.25, (maintenant - demo.dernier) / 1000);
+  demo.dernier = maintenant;
+  const c = CHAPITRES_DEMO[demo.index];
+  if (!demo.pause && demo.t < c.duree) {
+    demo.t = Math.min(c.duree, demo.t + dt);
+    const actions = ACTIONS_DEMO[c.id] || [];
+    while (demo.faits < actions.length && demo.t >= actions[demo.faits][0]) {
+      const action = actions[demo.faits++][1];
+      try { action(); } catch (e) { demo.erreurs.push(`${c.id} : ${e.message}`); }
+    }
+    if (demo.t >= c.duree && demo.index < CHAPITRES_DEMO.length - 1) demoAller(demo.index + 1);
+  }
+  const ch = CHAPITRES_DEMO[demo.index];
+  let l = -1;
+  ch.legendes.forEach((x, k) => { if (demo.t >= x.a) l = k; });
+  if (l !== demo.legende) {
+    demo.legende = l;
+    const p = $("demo-legende");
+    p.textContent = l >= 0 ? ch.legendes[l].texte : "";
+    p.classList.remove("demo-apparition");
+    void p.offsetWidth;
+    p.classList.add("demo-apparition");
+  }
+  const ecoule = CHAPITRES_DEMO.slice(0, demo.index).reduce((s, x) => s + x.duree, 0) + demo.t;
+  const mmss = s => `${Math.floor(s / 60)}:${String(Math.floor(s % 60)).padStart(2, "0")}`;
+  const temps = `${mmss(ecoule)} / ${mmss(DUREE_DEMO)}`;
+  if ($("demo-temps").textContent !== temps) {
+    $("demo-temps").textContent = temps;
+    $("demo-progres").querySelectorAll("i").forEach((barre, k) => {
+      barre.style.width = k < demo.index ? "100%" : k > demo.index ? "0%" : `${(demo.t / ch.duree) * 100}%`;
+    });
+  }
+}
+
+// Pendant la démo, le clavier et la souris pilotent la démo seule (le jeu ne reçoit rien)
+window.addEventListener("keydown", e => {
+  if (!demo.actif) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+  if (e.repeat) return;
+  if (e.key === "ArrowRight") demoAller(demo.index + 1);
+  else if (e.key === "ArrowLeft") demoAller(demo.t > 3 ? demo.index : demo.index - 1);
+  else if (e.key === " ") basculerPauseDemo();
+  else if (e.key === "Escape") quitterDemo();
+}, true);
+window.addEventListener("keyup", e => { if (demo.actif) e.stopImmediatePropagation(); }, true);
+["pointerdown", "mousedown", "mouseup", "click", "dblclick", "wheel", "contextmenu", "touchstart"].forEach(type => window.addEventListener(type, e => {
+  if (!demo.actif || demo.clicInterne || (e.target.closest && e.target.closest("#demo, #demo-fin"))) return;
+  e.preventDefault();
+  e.stopImmediatePropagation();
+}, { capture: true, passive: false }));
+$("btn-demo").textContent = TX_DEMO.bouton;
+$("btn-demo").addEventListener("click", lancerDemo);
+$("demo-precedent").addEventListener("click", () => demoAller(demo.t > 3 ? demo.index : demo.index - 1));
+$("demo-suivant").addEventListener("click", () => demoAller(demo.index + 1));
+$("demo-pause").addEventListener("click", basculerPauseDemo);
+$("demo-quitter").addEventListener("click", quitterDemo);
+$("demo-rejouer").addEventListener("click", () => demoAller(0));
+$("demo-jouer").addEventListener("click", quitterDemo);
+[["demo-precedent", TX_DEMO.precedent], ["demo-suivant", TX_DEMO.suivant], ["demo-quitter", TX_DEMO.quitter]].forEach(([id, t]) => { $(id).title = t; $(id).setAttribute("aria-label", t); });
+$("demo-aide").textContent = TX_DEMO.aide;
+$("demo-etiquette").textContent = TX_DEMO.etiquette;
+$("demo-rejouer").textContent = TX_DEMO.rejouer;
+$("demo-jouer").textContent = TX_DEMO.jouer;
+$("demo").setAttribute("aria-label", TX_DEMO.etiquette);
 
 /* ---------- H1. Outils de texture ---------- */
 let graineTexture = 7;
@@ -11741,7 +12014,8 @@ async function initialiser() {
   // Après un changement de langue, on revient directement à l'accueil
   let direct = false;
   try { direct = sessionStorage.getItem(CLES_STOCKAGE.demarre) === "1"; sessionStorage.removeItem(CLES_STOCKAGE.demarre); } catch (e) { /* ignoré */ }
-  if (direct) afficherAccueil(); else afficherDemarrage();
+  if (new URLSearchParams(location.search).has("demo")) lancerDemo();
+  else if (direct) afficherAccueil(); else afficherDemarrage();
   boucle();
   $("chargement-barre").style.width = "100%";
   const ecran = $("ecran-chargement");

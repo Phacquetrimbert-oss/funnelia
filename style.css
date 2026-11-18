@@ -1303,3 +1303,46 @@ body.mode-dialogue .fil, body.mode-ascenseur .fil { opacity: 0.25; }
 .dbg-bon { color: #4ade80; } .dbg-moyen { color: #facc15; } .dbg-mauvais { color: #f87171; }
 .dbg-banc p { margin: 8px 0 4px; }
 .dbg-banc textarea { width: 100%; font: 11px/1.3 ui-monospace, Menlo, monospace; background: #0b0f17; color: #e2e8f0; border: 1px solid #334155; border-radius: 4px; }
+
+/* ---------- Mode démo (5 minutes) ---------- */
+.demo {
+  position: fixed; left: 14px; right: 14px; bottom: 14px; z-index: 80;
+  background: rgba(15, 23, 42, 0.94); color: #fff; border-radius: 12px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.35); overflow: hidden;
+}
+.demo-progres { display: flex; gap: 3px; height: 4px; }
+.demo-progres span { background: rgba(255, 255, 255, 0.18); }
+.demo-progres i { display: block; height: 100%; width: 0; background: #f59e0b; }
+.demo-corps { display: flex; align-items: center; gap: 18px; padding: 10px 14px 4px; }
+.demo-chapitre { display: flex; align-items: baseline; gap: 8px; flex: 0 0 auto; font-size: 13px; }
+.demo-etiquette { background: #f59e0b; color: #0f172a; font-weight: 800; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding: 2px 7px; border-radius: 4px; }
+.demo-numero { color: #94a3b8; font-variant-numeric: tabular-nums; }
+.demo-legende { flex: 1; margin: 0; font-size: 16px; line-height: 1.4; font-weight: 500; }
+.demo-apparition { animation: demo-apparition 0.5s ease-out; }
+@keyframes demo-apparition { from { opacity: 0; transform: translateY(4px); } to { opacity: 1; transform: none; } }
+.demo-commandes { display: flex; align-items: center; gap: 6px; flex: 0 0 auto; }
+.demo-temps { font-variant-numeric: tabular-nums; color: #cbd5e1; font-size: 13px; margin-right: 6px; }
+.demo-commandes button {
+  width: 34px; height: 34px; border-radius: 8px; border: 1px solid rgba(255, 255, 255, 0.25);
+  background: transparent; color: #fff; font-size: 13px; cursor: pointer;
+}
+.demo-commandes button:hover, .demo-commandes button:focus-visible { background: rgba(255, 255, 255, 0.14); }
+.demo-aide { margin: 0; padding: 0 14px 8px; font-size: 11px; color: #94a3b8; }
+.demo-cible { outline: 3px solid #f59e0b !important; outline-offset: 3px; box-shadow: 0 0 0 7px rgba(245, 158, 11, 0.3) !important; transition: outline-color 0.2s; }
+.demo-fin { position: fixed; inset: 0; z-index: 79; display: flex; align-items: center; justify-content: center; padding: 16px 16px 120px; background: rgba(15, 23, 42, 0.55); }
+.demo-fin-carte { background: var(--blanc); border-radius: 16px; padding: 28px 36px; text-align: center; box-shadow: var(--ombre); }
+.demo-fin-carte .marque-logo svg { width: 64px; height: 64px; }
+.demo-fin-nom { margin: 10px 0 0; font-size: 28px; font-weight: 800; }
+.demo-fin-devise { margin: 2px 0 20px; color: var(--gris); }
+.demo-fin-boutons { display: flex; gap: 10px; justify-content: center; }
+/* Pendant la démo, l'interface du jeu laisse la place au bandeau */
+body.demo-active .dialogue { bottom: 112px; }
+body.demo-active .fenetre, body.demo-active .ecran { padding-bottom: 112px; }
+body.demo-active .panneau-mission { bottom: 112px; }
+body.demo-active .etage-chip { bottom: 112px; }
+body.demo-active #rappel-touches, body.demo-active #manette, body.demo-active #coach { display: none !important; }
+@media (max-width: 760px) {
+  .demo-corps { flex-wrap: wrap; gap: 8px; }
+  .demo-legende { flex-basis: 100%; order: 3; font-size: 14px; }
+}
+@media (prefers-reduced-motion: reduce) { .demo-apparition { animation: none; } }

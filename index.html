@@ -156,6 +156,31 @@
   </div>
 
   <!-- Chargement -->
+  <!-- Mode démo (5 minutes) : bandeau de légendes et commandes du présentateur -->
+  <div id="demo" class="demo cache" role="region">
+    <div id="demo-progres" class="demo-progres" aria-hidden="true"></div>
+    <div class="demo-corps">
+      <div class="demo-chapitre"><span id="demo-etiquette" class="demo-etiquette"></span><span id="demo-numero" class="demo-numero"></span><strong id="demo-titre"></strong></div>
+      <p id="demo-legende" class="demo-legende" aria-live="polite"></p>
+      <div class="demo-commandes">
+        <span id="demo-temps" class="demo-temps"></span>
+        <button id="demo-precedent" type="button">◀</button>
+        <button id="demo-pause" type="button">❚❚</button>
+        <button id="demo-suivant" type="button">▶</button>
+        <button id="demo-quitter" type="button">✕</button>
+      </div>
+    </div>
+    <p id="demo-aide" class="demo-aide"></p>
+  </div>
+  <div id="demo-fin" class="demo-fin cache">
+    <div class="demo-fin-carte">
+      <span class="marque-logo" aria-hidden="true"><svg viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#0b1f3a"/><path d="M8 10h32l-3.2 6.5H11.2z" fill="#94a3b8"/><path d="M12.4 18.5h23.2l-3.2 6.5H15.6z" fill="#3b82f6"/><path d="M16.8 27h14.4l-3.2 6.5h-8z" fill="#8b5cf6"/><path d="M21 35.5h6l-1.2 4.5h-3.6z" fill="#22c55e"/></svg></span>
+      <p class="demo-fin-nom">Funnelia</p>
+      <p class="demo-fin-devise" data-en="From prospect to customer">De prospect à client</p>
+      <div class="demo-fin-boutons"><button id="demo-rejouer" type="button" class="btn-secondaire"></button><button id="demo-jouer" type="button" class="btn-principal"></button></div>
+    </div>
+  </div>
+
   <div id="ecran-chargement" class="ecran-chargement">
     <div class="chargement-contenu">
       <div class="marque marque-grande">
@@ -209,6 +234,7 @@
             <button type="button" class="segment-option" data-langue="fr">FR</button>
             <button type="button" class="segment-option" data-langue="en">EN</button>
           </div>
+          <button id="btn-demo" class="btn-secondaire btn-petit">Démo (5 min)</button>
           <button id="btn-aide-accueil" class="btn-secondaire btn-petit" data-en="How does it work?">Comment ça marche ?</button>
           <button id="btn-guide-accueil" class="btn-secondaire btn-petit" data-en="Sales guide">Guide du commercial</button>
           <button id="btn-reglages-accueil" class="btn-secondaire btn-petit" data-en="Settings">Paramètres</button>
@@ -450,6 +476,7 @@
   <script src="assets/personnages/femme-decontractee.js"></script>
   <script src="assets/personnages/femme-robe.js"></script>
   <script src="textes/catalogue.js"></script>
+  <script src="textes/demo.js"></script>
   <script src="script.js"></script>
 </body>
 </html>
