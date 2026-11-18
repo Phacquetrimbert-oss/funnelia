@@ -3,6 +3,8 @@
 **Simulateur 3D de conversion commerciale B2B, en français et en anglais.**
 Vous êtes commercial chez Veltis, éditeur de logiciel fictif installé à La Défense. Mission après mission, vous faites avancer vos contacts dans le tunnel de conversion : **Prospect → Lead → Opportunité → Client**, puis vous les fidélisez.
 
+**[▶ Jouer en ligne](https://phacquetrimbert-oss.github.io/funnelia/)** · **[▶ Voir la démo de 5 minutes](https://phacquetrimbert-oss.github.io/funnelia/?demo)** (le jeu se joue seul, avec des légendes)
+
 ![Aperçu de Funnelia : accueil, briefing, animation de départ, plateau commercial, hall, tableau de bord, accueil en anglais](docs/img/apercu.gif)
 
 ## Jouer
@@ -26,7 +28,7 @@ Chaque mission existe en profil **terrain** ou **sédentaire** et en exigence **
 
 Formateurs : voir le [guide du formateur](docs/guide-formateur.md).
 
-**Démo de 5 minutes** : bouton « Démo (5 min) » de l'accueil, ou `index.html?demo`. Le jeu se joue seul, chapitre par chapitre, avec des légendes ; → chapitre suivant, Espace pause, Échap quitter.
+**Démo de 5 minutes** : [lien direct](https://phacquetrimbert-oss.github.io/funnelia/?demo), bouton « Démo (5 min) » de l'accueil, ou `index.html?demo` en local. Le jeu se joue seul, chapitre par chapitre, avec des légendes ; → chapitre suivant, Espace pause, Échap quitter.
 
 ## Commandes
 
@@ -80,6 +82,6 @@ Veltis, ses produits, ses clients, ses concurrents et toutes les personnes du je
 
 ## In English
 
-**Funnelia** is a 3D B2B sales conversion simulator (French and English). As a sales rep at Veltis, a fictional software company, you move contacts through the funnel: Prospect → Lead → Opportunity → Customer, then retain them. Play online (link above) or download the repository and double-click `index.html`: it runs offline, with no server. Switch to English with the **EN** button on the home screen.
+**Funnelia** is a 3D B2B sales conversion simulator (French and English). As a sales rep at Veltis, a fictional software company, you move contacts through the funnel: Prospect → Lead → Opportunity → Customer, then retain them. Play online (link above, or [watch the 5-minute demo](https://phacquetrimbert-oss.github.io/funnelia/?demo)) or download the repository and double-click `index.html`: it runs offline, with no server. Switch to English with the **EN** button on the home screen.
 
 Code under the MIT licence, content (`textes/`, `docs/`, README) under CC BY-SA 4.0, third-party assets listed in CREDITS.md. All companies and people in the game are fictional.
