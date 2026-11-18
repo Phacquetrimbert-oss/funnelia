@@ -73,7 +73,8 @@ Veltis, ses produits, ses clients, ses concurrents et toutes les personnes du je
 
 ## Contact
 
-*À compléter avant publication : adresse dédiée au projet.*
+- **Questions, idées, bugs :** ouvrez une *issue* sur https://github.com/Phacquetrimbert-oss/funnelia/issues (publique).
+- **Comportement contraire au [code de conduite](CODE_OF_CONDUCT.md) :** utilisez le bouton *Report content* de GitHub (menu « … » du message ou du profil concerné). Le signalement reste privé.
 
 ---
 

@@ -30,4 +30,4 @@ Objectif : que n'importe quel formateur, étudiant ou développeur puisse **joue
 
 - **Les noms de personnes** ne se détectent pas automatiquement. Ceux du jeu sont inventés ; la règle est rappelée dans `CONTRIBUTING.md`, et une mention de fiction figure dans le README.
 - **Il reste 2 640 textes bilingues dans `script.js`.** Ils sont bien synchronisés (écrits par paires `T("…", "…")`), mais pas encore modifiables par quelqu'un qui ne lit pas le code.
-- **Adresse de contact** du code de conduite et du README : à créer avant la publication.
+- **Pas d'adresse de contact dédiée** : le contact passe par les *issues* GitHub, et les signalements liés au code de conduite par la fonction privée *Report content* de GitHub. Une adresse dédiée au projet pourra s'y ajouter si la communauté grandit.

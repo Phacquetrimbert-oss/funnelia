@@ -36,7 +36,7 @@ Ce code de conduite s'applique à la fois au sein des espaces du projet ainsi qu
 
 ## Application
 
-Les cas de comportements abusifs, harcelants ou tout autre comportement inacceptables peuvent être signalés aux dirigeant·e·s de la communauté responsables de l'application du code de conduite à l'adresse indiquée dans la rubrique « Contact » du README (À COMPLÉTER avant publication : adresse dédiée au projet).
+Les cas de comportements abusifs, harcelants ou tout autre comportement inacceptables peuvent être signalés aux dirigeant·e·s de la communauté responsables de l'application du code de conduite de façon privée, avec le bouton *Report content* de GitHub (menu « … » du message, de l'issue ou du profil concerné). Pour un problème qui peut être discuté publiquement, une *issue* sur https://github.com/Phacquetrimbert-oss/funnelia/issues convient aussi.
 Toutes les plaintes seront examinées et feront l'objet d'une enquête rapide et équitable.
 
 Tou·te·s les dirigeant·e·s de la communauté sont tenu·e·s de respecter la vie privée et la sécurité des personnes ayant signalé un incident.
