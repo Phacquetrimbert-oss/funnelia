@@ -8,7 +8,7 @@ Merci de votre intérêt. Funnelia est un jeu pédagogique : chaque contribution
 2. **Three.js reste en r128.** Les versions récentes n'existent plus qu'en modules ES (règle 1) et changent l'éclairage et les couleurs : tout le décor devrait être réglé de nouveau.
 3. **Français et anglais toujours synchronisés.** Aucun texte visible ne s'ajoute dans une seule langue (voir plus bas).
 4. **Les sauvegardes des joueurs ne se perdent jamais.** Si vous changez une clé `localStorage` ou la forme des résultats, ajoutez une migration (voir `ANCIENNES_CLES` et `chargerResultats()` dans `script.js`) et n'effacez jamais l'ancienne clé.
-5. **Données fictives uniquement.** Pas de nom de personne, d'entreprise, d'adresse e-mail ou de chiffre réels dans les textes, les images ou les fichiers d'exemple.
+5. **Données fictives uniquement.** Pas de nom de personne, d'entreprise, d'adresse e-mail ou de chiffre réels dans les textes, les images ou les fichiers d'exemple. `python3 outils/verifier-donnees.py` cherche e-mails, téléphones, IBAN, SIRET et chemins personnels dans les fichiers et dans tout l'historique ; configurez git avec votre adresse « noreply » GitHub.
 
 ## Écrire un texte en deux langues
 
@@ -20,9 +20,10 @@ Avant chaque proposition, lancez :
 
 ```
 python3 outils/verifier-textes.py
+python3 outils/verifier-donnees.py
 ```
 
-Il signale une traduction manquante ou vide, et des repères différents entre les deux langues (par exemple `{Il}` présent en français mais absent en anglais).
+Le premier signale une traduction manquante ou vide, et des repères différents entre les deux langues (par exemple `{Il}` présent en français mais absent en anglais). Le second, une donnée personnelle. GitHub Actions lance les deux avant chaque publication.
 
 ## Proposer une modification
 

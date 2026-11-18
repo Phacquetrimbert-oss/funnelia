@@ -48,12 +48,12 @@ Tout se joue aussi à la souris, et au tactile sur tablette.
 | `textes/` | Textes du jeu en français et en anglais, côte à côte (`{ fr, en }`). L'extraction depuis `script.js` est progressive : le catalogue commercial est le premier extrait. |
 | `assets/personnages/` | Personnages 3D (glTF, CC0), encodés en `.js` pour fonctionner sans serveur. |
 | `vendor/`, `fonts/` | Three.js r128 et la police Inter, copiés localement : aucun appel réseau. |
-| `outils/` | `verifier-textes.py` (FR/EN synchronisés), `preparer-personnage.py` (allègement des modèles 3D). |
+| `outils/` | `verifier-textes.py` (FR/EN synchronisés), `verifier-donnees.py` (aucune donnée personnelle, historique compris), `preparer-personnage.py` (allègement des modèles 3D), `remplacer-auteur.sh` (adresse des commits). |
 | `docs/` | Choix de conception, mesures de performance, guides. |
 
 Le jeu doit toujours s'ouvrir par double-clic : pas de module ES, pas de chargement de fichier par `fetch`, et Three.js reste en r128. Les raisons sont expliquées dans [CONTRIBUTING.md](CONTRIBUTING.md).
 
-Documentation : [performances](docs/performances.md) · [interface](docs/ux.md) · [ajouter une mission](docs/ajouter-une-mission.md) · [guide du formateur](docs/guide-formateur.md).
+Documentation : [performances](docs/performances.md) · [interface](docs/ux.md) · [ouverture du code](docs/open-source.md) · [ajouter une mission](docs/ajouter-une-mission.md) · [guide du formateur](docs/guide-formateur.md).
 
 ## Contribuer
 

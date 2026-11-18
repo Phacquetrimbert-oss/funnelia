@@ -22,9 +22,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # tout l'historique, pour la recherche de données personnelles
 
       - name: Vérifier que les textes FR et EN sont synchronisés
         run: python3 outils/verifier-textes.py
+
+      - name: Vérifier l'absence de données personnelles (fichiers et historique)
+        run: python3 outils/verifier-donnees.py
 
       - name: Rassembler les fichiers du jeu
         # Seuls les fichiers chargés par index.html sont publiés : les modèles
