@@ -7,7 +7,7 @@ Vous êtes commercial chez Veltis, éditeur de logiciel fictif installé à La D
 
 ## Jouer
 
-- **En ligne :** https://COMPTE.github.io/funnelia/ *(à compléter une fois le dépôt publié)*
+- **En ligne :** https://phacquetrimbert-oss.github.io/funnelia/ (code source : https://github.com/Phacquetrimbert-oss/funnelia)
 - **Sur votre ordinateur, sans installation :** téléchargez le dépôt (bouton *Code → Download ZIP*), décompressez-le, puis **double-cliquez sur `index.html`**. Le jeu fonctionne sans connexion internet et sans serveur.
 
 Navigateurs testés : Chrome et Safari récents. Une carte graphique intégrée suffit (qualité « Moyen » par défaut, ajustée automatiquement si l'ordinateur peine).
