@@ -178,6 +178,6 @@ Toutes les cibles de performance sont atteintes sur cette machine : moins de 300
 300 000 triangles par étage, 60 FPS en Moyen, au moins 45 FPS en Élevé. Seule exception : les
 matériaux (103 à 121, cible 60), qui sont ceux du décor.
 
-Les personnages animés coûtent un peu de calcul par image (squelettes, une texture d'os chacun) :
 Élevé et Ultra perdent 1 à 2 FPS par rapport au lot 2, alors que le nombre d'objets dessinés baisse
-d'un tiers. C'est le prix de personnages animés et crédibles ; Élevé reste près de 60 FPS.
+d'un tiers. Cause probable, non isolée par une mesure : l'animation des squelettes, calculée à chaque
+image pour chaque personnage. Élevé reste près de 60 FPS.
