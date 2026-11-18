@@ -44,12 +44,10 @@
         <span id="hud-niveau" class="hud-niveau"></span>
       </div>
       <div id="hud-mission" class="hud-mission"></div>
-      <div id="hud-tunnel" class="tunnel-ligne cache"></div>
       <div id="hud-jauge" class="jauge cache">
         <div class="jauge-ligne"><span id="hud-jauge-label"></span><span id="hud-jauge-valeur"></span></div>
         <div class="jauge-fond"><div id="hud-jauge-rempli" class="jauge-rempli"></div></div>
       </div>
-      <div id="hud-posture" class="posture-mini"></div>
       <div id="hud-taches" class="hud-taches cache"></div>
     </div>
       <!-- KPI de la mission (couche 2) : affichés quand ils changent ; les alertes restent -->
@@ -75,7 +73,20 @@
       </div>
       <button id="btn-panneau" class="btn-icone btn-mini" title="Réduire ou afficher" data-en-title="Collapse or expand" tabindex="-1">–</button>
     </header>
+    <!-- Couche 3 : synthèse de la mission (tunnel, progression, KPI) et raccourcis -->
+    <div class="pm-synthese">
+      <div id="hud-tunnel" class="tunnel-ligne cache"></div>
+      <div id="hud-posture" class="posture-mini"></div>
+      <div id="pm-kpis" class="pm-kpis"></div>
+    </div>
     <div id="pm-contenu" class="pm-contenu"></div>
+    <footer class="pm-raccourcis">
+      <button type="button" data-raccourci="k" tabindex="-1" data-en="&lt;b&gt;K&lt;/b&gt; KPI"><b>K</b> KPI</button>
+      <button type="button" data-raccourci="o" tabindex="-1" data-en="&lt;b&gt;O&lt;/b&gt; Team"><b>O</b> Équipe</button>
+      <button type="button" data-raccourci="g" tabindex="-1" data-en="&lt;b&gt;G&lt;/b&gt; Guide"><b>G</b> Guide</button>
+      <button type="button" data-raccourci="p" tabindex="-1" data-en="&lt;b&gt;P&lt;/b&gt; Map"><b>P</b> Plan</button>
+      <button type="button" data-raccourci="h" tabindex="-1" data-en="&lt;b&gt;H&lt;/b&gt; Help"><b>H</b> Aide</button>
+    </footer>
   </aside>
 
   <div id="indice" class="indice cache"></div>

@@ -3085,6 +3085,7 @@ function hudKpis(liste) {
   if (html === cacheKpis) return;
   const el = $("hud-kpis");
   el.innerHTML = html;
+  $("pm-kpis").innerHTML = html;
   cacheKpis = html;
   [...el.children].forEach((c, i) => {
     const k = liste[i], avant = kpisAffiches.valeurs[k.label];
@@ -3165,6 +3166,9 @@ function majPanneau(force = false) {
     if (jeu.focusPanneau) restaurerFocusPanneau();
   }
 }
+// Raccourcis du panneau : mêmes actions que les touches K, O, G, P, H
+const ACTIONS_RACCOURCIS = { k: () => ouvrirTableauDeBord(), o: () => ouvrirOrganigramme(), g: () => ouvrirGuide(), p: () => ouvrirPlan(), h: () => ouvrirAide() };
+document.querySelectorAll("[data-raccourci]").forEach(b => b.addEventListener("click", () => { if (jeu.mode !== "jeu") return; son("clic"); ACTIONS_RACCOURCIS[b.dataset.raccourci](); }));
 $("pm-contenu").addEventListener("pointerdown", () => { panneauPresse = true; });
 window.addEventListener("pointerup", () => { panneauPresse = false; });
 $("pm-contenu").addEventListener("click", e => {
@@ -6817,6 +6821,7 @@ function viderNiveau() {
   cacheKpis = "";
   kpisAffiches.valeurs = {};
   $("hud-kpis").innerHTML = "";
+  $("pm-kpis").innerHTML = "";
 }
 
 function majReglages() {
